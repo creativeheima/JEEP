@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getBookings, saveBookings, generateBookingCode } from '@/lib/bookingStore';
+import { 
+  fetchAllBookings, 
+  insertNewBooking, 
+  generateBookingCode 
+} from '@/lib/bookingStore';
 import { Booking } from '@/types/booking';
 
 export async function GET(request: Request) {
@@ -8,7 +12,7 @@ export async function GET(request: Request) {
     const search = searchParams.get('search')?.toLowerCase() || '';
     const status = searchParams.get('status') || '';
 
-    let list = getBookings();
+    let list = await fetchAllBookings();
 
     if (search) {
       list = list.filter(b => 
@@ -80,11 +84,9 @@ export async function POST(request: Request) {
       approvedAt: isPending ? undefined : new Date().toISOString(),
     };
 
-    const bookings = getBookings();
-    bookings.unshift(newBooking);
-    saveBookings(bookings);
+    const savedBooking = await insertNewBooking(newBooking);
 
-    return NextResponse.json({ success: true, data: newBooking }, { status: 201 });
+    return NextResponse.json({ success: true, data: savedBooking }, { status: 201 });
   } catch (error) {
     console.error('Error creating booking:', error);
     return NextResponse.json({ success: false, error: 'Failed to create booking' }, { status: 500 });

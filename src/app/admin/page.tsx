@@ -456,7 +456,7 @@ export default function AdminDashboardPage() {
         )}
 
         {/* Tab Navigation */}
-        <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-slate-900 border border-slate-800 self-start">
+        <div className="flex flex-nowrap items-center gap-2 p-1.5 rounded-2xl bg-slate-900 border border-slate-800 self-start max-w-full overflow-x-auto [&>button]:whitespace-nowrap [&>button]:shrink-0">
           <button
             onClick={() => setActiveTab('pending')}
             className={`px-4 py-2.5 rounded-xl text-xs font-space font-bold transition-all flex items-center gap-2 cursor-pointer ${
@@ -506,7 +506,7 @@ export default function AdminDashboardPage() {
           <div className="bg-slate-900/80 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-xl space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
               <div>
-                <h3 className="font-outfit font-black text-xl text-white flex items-center gap-2">
+                <h3 className="font-outfit font-black text-xl text-white flex flex-wrap items-center gap-2">
                   <span>Permintaan Masuk dari Client Website</span>
                   <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-space font-bold">
                     Menunggu Approval
@@ -519,7 +519,7 @@ export default function AdminDashboardPage() {
 
               <button
                 onClick={fetchBookings}
-                className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors shrink-0 self-start sm:self-auto"
                 title="Refresh"
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -543,16 +543,16 @@ export default function AdminDashboardPage() {
                     key={b.id}
                     className="p-6 rounded-2xl bg-slate-950/80 border border-amber-500/30 hover:border-amber-400 shadow-lg space-y-4 relative group transition-all"
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-amber-400 text-xs bg-slate-900 px-2.5 py-1 rounded border border-slate-800">
+                        <span className="font-mono font-bold text-amber-400 text-xs bg-slate-900 px-2.5 py-1 rounded border border-slate-800 whitespace-nowrap">
                           {b.bookingCode}
                         </span>
-                        <span className="text-[10px] font-space text-slate-500">
+                        <span className="text-[10px] font-space text-slate-500 whitespace-nowrap">
                           {new Date(b.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB
                         </span>
                       </div>
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-space font-bold uppercase bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-space font-bold uppercase bg-amber-500/10 text-amber-400 border border-amber-500/30 whitespace-nowrap">
                         PENDING APPROVAL
                       </span>
                     </div>
@@ -599,17 +599,17 @@ export default function AdminDashboardPage() {
                     <div className="pt-2 flex items-center gap-2">
                       <button
                         onClick={() => handleOpenApproveModal(b)}
-                        className="amber-gradient-btn flex-1 py-3 rounded-xl font-space font-bold text-xs text-slate-950 flex items-center justify-center gap-2 shadow-md hover:brightness-110 cursor-pointer"
+                        className="amber-gradient-btn flex-1 min-w-0 px-3 py-3 rounded-xl font-space font-bold text-xs text-slate-950 flex items-center justify-center gap-2 shadow-md hover:brightness-110 cursor-pointer"
                       >
-                        <CheckSquare className="w-4 h-4" />
-                        <span>REVIEW & APPROVE DEAL INI</span>
+                        <CheckSquare className="w-4 h-4 shrink-0" />
+                        <span className="text-center leading-tight">REVIEW & APPROVE<span className="hidden sm:inline"> DEAL INI</span></span>
                       </button>
 
                       <a
                         href={`https://wa.me/${b.customerPhone.replace(/^0/, '62').replace(/[^0-9]/g, '')}?text=Halo%20Kak%20${encodeURIComponent(b.customerName)},%20kami%20dari%20Merapi%20Jeep%20Adventure%20melihat%20reservasi%20Kakak%20untuk%20${encodeURIComponent(b.packageName)}%20di%20tanggal%20${b.tourDate}.%20Boleh%20kami%20bantu%20konfirmasi%20kesepakatan%20harga%20dan%20DP?`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-3 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 transition-colors"
+                        className="p-3 shrink-0 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 transition-colors"
                         title="Chat WA Pelanggan"
                       >
                         <Phone className="w-4 h-4" />
@@ -617,7 +617,7 @@ export default function AdminDashboardPage() {
 
                       <button
                         onClick={() => handleDelete(b.id)}
-                        className="p-3 rounded-xl bg-slate-900 hover:bg-red-500/20 text-slate-500 hover:text-red-400 border border-slate-800 transition-colors cursor-pointer"
+                        className="p-3 shrink-0 rounded-xl bg-slate-900 hover:bg-red-500/20 text-slate-500 hover:text-red-400 border border-slate-800 transition-colors cursor-pointer"
                         title="Tolak / Hapus"
                       >
                         <Trash2 className="w-4 h-4" />

@@ -14,7 +14,8 @@ import {
   Sparkles,
   ArrowRight,
   ExternalLink,
-  MessageSquare
+  MessageSquare,
+  Car
 } from 'lucide-react';
 import { packagesData } from './PackagesSection';
 import { Booking } from '@/types/booking';
@@ -221,14 +222,14 @@ export default function BookingModal({
                     Nama Lengkap <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
-                    <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                    <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       type="text"
                       required
                       placeholder="Contoh: Budi Santoso"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-slate-900 bg-slate-50"
+                      className="w-full pl-9 pr-3 h-11 py-0 text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-slate-900 bg-slate-50"
                     />
                   </div>
                 </div>
@@ -238,14 +239,14 @@ export default function BookingModal({
                     Nomor WhatsApp <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
-                    <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                    <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       type="tel"
                       required
                       placeholder="0812xxxxxxxx"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-slate-900 bg-slate-50 font-mono"
+                      className="w-full pl-9 pr-3 h-11 py-0 text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-slate-900 bg-slate-50 font-mono"
                     />
                   </div>
                 </div>
@@ -258,13 +259,13 @@ export default function BookingModal({
                     Tanggal Tur <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
-                    <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                    <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       type="date"
                       required
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-slate-900 bg-slate-50"
+                      className="w-full pl-9 pr-3 h-11 py-0 text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-slate-900 bg-slate-50"
                     />
                   </div>
                 </div>
@@ -274,13 +275,13 @@ export default function BookingModal({
                     Perkiraan Jam Kumpul
                   </label>
                   <div className="relative">
-                    <Clock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                    <Clock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       type="text"
                       placeholder="09:00 WIB"
                       value={time}
                       onChange={(e) => setTime(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-slate-900 bg-slate-50"
+                      className="w-full pl-9 pr-3 h-11 py-0 text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-slate-900 bg-slate-50"
                     />
                   </div>
                 </div>
@@ -289,11 +290,11 @@ export default function BookingModal({
               {/* Passengers & Jeep Count */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="font-space font-bold text-slate-700 block mb-1 uppercase">
+                  <label className="font-space font-bold text-slate-700 flex items-end sm:min-h-[2rem] mb-1 uppercase">
                     Jumlah Orang
                   </label>
                   <div className="relative">
-                    <Users className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                    <Users className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       type="number"
                       min={1}
@@ -304,22 +305,25 @@ export default function BookingModal({
                         setPassengers(p);
                         setJeepCount(Math.ceil(p / 4));
                       }}
-                      className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-slate-900 bg-slate-50 font-mono"
+                      className="w-full pl-9 pr-3 h-11 py-0 text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-slate-900 bg-slate-50 font-mono"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="font-space font-bold text-slate-700 block mb-1 uppercase">
+                  <label className="font-space font-bold text-slate-700 flex items-end sm:min-h-[2rem] mb-1 uppercase">
                     Jumlah Unit Jeep (Maks 4 org/unit)
                   </label>
-                  <input
+                  <div className="relative">
+                    <Car className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
                     type="number"
                     min={1}
                     value={jeepCount}
                     onChange={(e) => setJeepCount(Number(e.target.value))}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-slate-900 bg-slate-50 font-mono"
+                    className="w-full pl-9 pr-3 h-11 py-0 text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-slate-900 bg-slate-50 font-mono"
                   />
+                  </div>
                 </div>
               </div>
 

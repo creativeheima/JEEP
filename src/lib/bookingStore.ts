@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { Booking } from '@/types/booking';
+import { supabase, isSupabaseConfigured } from './supabase';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const DATA_FILE = path.join(DATA_DIR, 'bookings.json');
@@ -100,6 +101,62 @@ function ensureDirectory() {
   }
 }
 
+// -------------------------------------------------------------
+// HELPER: Konversi format model TypeScript <-> Supabase DB Row
+// -------------------------------------------------------------
+function toDatabaseRow(booking: Booking) {
+  return {
+    id: booking.id,
+    booking_code: booking.bookingCode,
+    customer_name: booking.customerName,
+    customer_phone: booking.customerPhone,
+    package_name: booking.packageName,
+    tour_date: booking.tourDate,
+    tour_time: booking.tourTime,
+    pax_count: booking.paxCount,
+    jeep_count: booking.jeepCount,
+    total_amount: booking.totalAmount,
+    dp_amount: booking.dpAmount,
+    remaining_amount: booking.remainingAmount,
+    payment_method: booking.paymentMethod,
+    payment_status: booking.paymentStatus,
+    approval_status: booking.approvalStatus,
+    driver_name: booking.driverName || 'Menunggu Penugasan Driver',
+    jeep_number: booking.jeepNumber || '-',
+    notes: booking.notes || '',
+    created_at: booking.createdAt,
+    approved_at: booking.approvedAt || null,
+  };
+}
+
+function fromDatabaseRow(row: Record<string, any>): Booking {
+  return {
+    id: String(row.id),
+    bookingCode: String(row.booking_code),
+    customerName: String(row.customer_name),
+    customerPhone: String(row.customer_phone),
+    packageName: String(row.package_name),
+    tourDate: String(row.tour_date),
+    tourTime: String(row.tour_time),
+    paxCount: Number(row.pax_count) || 1,
+    jeepCount: Number(row.jeep_count) || 1,
+    totalAmount: Number(row.total_amount) || 0,
+    dpAmount: Number(row.dp_amount) || 0,
+    remainingAmount: Number(row.remaining_amount) || 0,
+    paymentMethod: String(row.payment_method || 'Transfer Bank'),
+    paymentStatus: row.payment_status || 'MENUNGGU_PEMBAYARAN',
+    approvalStatus: row.approval_status || 'PENDING',
+    driverName: row.driver_name || 'Menunggu Penugasan Driver',
+    jeepNumber: row.jeep_number || '-',
+    notes: row.notes || '',
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+    approvedAt: row.approved_at ? new Date(row.approved_at).toISOString() : undefined,
+  };
+}
+
+// -------------------------------------------------------------
+// LOCAL FALLBACK OPERATIONS
+// -------------------------------------------------------------
 export function getBookings(): Booking[] {
   ensureDirectory();
   if (!fs.existsSync(DATA_FILE)) {
@@ -125,6 +182,184 @@ export function getBookingByCode(code: string): Booking | undefined {
   return bookings.find(
     b => b.bookingCode.toLowerCase() === search || b.id.toLowerCase() === search
   );
+}
+
+// -------------------------------------------------------------
+// ASYNC DATABASE OPERATIONS (Supabase with Local Fallback)
+// -------------------------------------------------------------
+export async function fetchAllBookings(): Promise<Booking[]> {
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Supabase fetch error, fallback to local:', error.message);
+        return getBookings();
+      }
+
+      if (data && data.length > 0) {
+        return data.map(fromDatabaseRow);
+      }
+    } catch (err) {
+      console.error('Supabase exception, fallback to local:', err);
+    }
+  }
+  return getBookings();
+}
+
+export async function fetchSingleBooking(idOrCode: string): Promise<Booking | null> {
+  const search = idOrCode.trim();
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .or(`booking_code.eq.${search},id.eq.${search}`)
+        .maybeSingle();
+
+      if (!error && data) {
+        return fromDatabaseRow(data);
+      }
+    } catch (err) {
+      console.error('Supabase fetchSingleBooking exception:', err);
+    }
+  }
+
+  const local = getBookingByCode(search);
+  return local || null;
+}
+
+export async function insertNewBooking(booking: Booking): Promise<Booking> {
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const row = toDatabaseRow(booking);
+      const { data, error } = await supabase
+        .from('bookings')
+        .insert([row])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase insert error, saving locally:', error.message);
+      } else if (data) {
+        // Juga simpan cache lokal
+        const local = getBookings();
+        local.unshift(booking);
+        saveBookings(local);
+        return fromDatabaseRow(data);
+      }
+    } catch (err) {
+      console.error('Supabase insert exception, saving locally:', err);
+    }
+  }
+
+  // Local fallback
+  const bookings = getBookings();
+  bookings.unshift(booking);
+  saveBookings(bookings);
+  return booking;
+}
+
+export async function updateExistingBooking(
+  idOrCode: string,
+  updates: Partial<Booking>
+): Promise<Booking | null> {
+  const search = idOrCode.trim();
+
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const dbUpdates: Record<string, any> = {};
+      if (updates.customerName !== undefined) dbUpdates.customer_name = updates.customerName;
+      if (updates.customerPhone !== undefined) dbUpdates.customer_phone = updates.customerPhone;
+      if (updates.packageName !== undefined) dbUpdates.package_name = updates.packageName;
+      if (updates.tourDate !== undefined) dbUpdates.tour_date = updates.tourDate;
+      if (updates.tourTime !== undefined) dbUpdates.tour_time = updates.tourTime;
+      if (updates.paxCount !== undefined) dbUpdates.pax_count = updates.paxCount;
+      if (updates.jeepCount !== undefined) dbUpdates.jeep_count = updates.jeepCount;
+      if (updates.totalAmount !== undefined) dbUpdates.total_amount = updates.totalAmount;
+      if (updates.dpAmount !== undefined) dbUpdates.dp_amount = updates.dpAmount;
+      if (updates.remainingAmount !== undefined) dbUpdates.remaining_amount = updates.remainingAmount;
+      if (updates.paymentMethod !== undefined) dbUpdates.payment_method = updates.paymentMethod;
+      if (updates.paymentStatus !== undefined) dbUpdates.payment_status = updates.paymentStatus;
+      if (updates.approvalStatus !== undefined) dbUpdates.approval_status = updates.approvalStatus;
+      if (updates.driverName !== undefined) dbUpdates.driver_name = updates.driverName;
+      if (updates.jeepNumber !== undefined) dbUpdates.jeep_number = updates.jeepNumber;
+      if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+      if (updates.approvedAt !== undefined) dbUpdates.approved_at = updates.approvedAt;
+
+      const { data, error } = await supabase
+        .from('bookings')
+        .update(dbUpdates)
+        .or(`booking_code.eq.${search},id.eq.${search}`)
+        .select()
+        .single();
+
+      if (!error && data) {
+        const result = fromDatabaseRow(data);
+        // Sync local
+        const localList = getBookings();
+        const idx = localList.findIndex(
+          b => b.id.toLowerCase() === search.toLowerCase() || b.bookingCode.toLowerCase() === search.toLowerCase()
+        );
+        if (idx !== -1) {
+          localList[idx] = result;
+          saveBookings(localList);
+        }
+        return result;
+      }
+    } catch (err) {
+      console.error('Supabase update exception:', err);
+    }
+  }
+
+  // Local fallback
+  const localList = getBookings();
+  const idx = localList.findIndex(
+    b => b.id.toLowerCase() === search.toLowerCase() || b.bookingCode.toLowerCase() === search.toLowerCase()
+  );
+  if (idx === -1) return null;
+
+  const current = localList[idx];
+  const updated: Booking = { ...current, ...updates };
+  localList[idx] = updated;
+  saveBookings(localList);
+  return updated;
+}
+
+export async function deleteExistingBooking(idOrCode: string): Promise<boolean> {
+  const search = idOrCode.trim();
+
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .delete()
+        .or(`booking_code.eq.${search},id.eq.${search}`);
+
+      if (!error) {
+        let local = getBookings();
+        local = local.filter(
+          b => b.id.toLowerCase() !== search.toLowerCase() && b.bookingCode.toLowerCase() !== search.toLowerCase()
+        );
+        saveBookings(local);
+        return true;
+      }
+    } catch (err) {
+      console.error('Supabase delete exception:', err);
+    }
+  }
+
+  let local = getBookings();
+  const initialLen = local.length;
+  local = local.filter(
+    b => b.id.toLowerCase() !== search.toLowerCase() && b.bookingCode.toLowerCase() !== search.toLowerCase()
+  );
+  if (local.length === initialLen) return false;
+  saveBookings(local);
+  return true;
 }
 
 export function generateBookingCode(): string {
