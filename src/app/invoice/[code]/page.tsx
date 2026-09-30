@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import {
   Printer,
@@ -160,26 +161,32 @@ export default function InvoicePage() {
           <div className="absolute top-0 right-0 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
           
           <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 flex items-center justify-center text-slate-950 font-black shadow-xl shrink-0">
-                <Car className="w-8 h-8 text-slate-950" />
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="relative h-14 w-auto shrink-0">
+                <Image
+                  src="/images/logo.png"
+                  alt="Merapi Jeep 4x4 Adventure Tour"
+                  width={2171}
+                  height={724}
+                  className="h-14 w-auto object-contain"
+                />
               </div>
-              <div>
+              <div className="border-l-0 sm:border-l sm:border-slate-800 sm:pl-4">
                 <div className="flex items-center gap-2">
-                  <span className="font-outfit font-black text-2xl text-white tracking-tight leading-tight">
-                    MERAPI JEEP
-                  </span>
                   <span className="px-2 py-0.5 rounded bg-amber-400 text-slate-950 text-[10px] font-space font-black uppercase">
                     OFFICIAL 4X4 PASS
                   </span>
+                  <span className="text-[11px] font-mono text-slate-400">
+                    ID: {booking.bookingCode}
+                  </span>
                 </div>
-                <p className="font-space text-xs text-amber-400 tracking-widest uppercase mt-0.5">
-                  E-TIKET & SURAT KONFIRMASI INVOICE RESMI
+                <p className="font-space text-xs text-amber-400 tracking-widest uppercase mt-1 font-bold">
+                  E-TIKET & INVOICE RESMI
                 </p>
-                <div className="flex items-center gap-2 text-[11px] font-work text-slate-400 mt-1">
+                <div className="flex items-center gap-2 text-[11px] font-work text-slate-400 mt-0.5">
                   <span>Basecamp Kaliurang Barat</span>
                   <span>•</span>
-                  <span>Paguyuban Resmi Sleman, DIY</span>
+                  <span>Paguyuban Sleman, DIY</span>
                 </div>
               </div>
             </div>
