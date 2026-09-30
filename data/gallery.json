@@ -1,0 +1,72 @@
+[
+  {
+    "id": "gal-1",
+    "type": "PHOTO",
+    "title": "Jeep Traversing Off-Road Track",
+    "category": "JEEP ACTION",
+    "mediaUrl": "/images/img_1_577_jeep_traversing_off-road_track.png",
+    "createdAt": "2026-09-25T23:25:07.038Z"
+  },
+  {
+    "id": "gal-2",
+    "type": "PHOTO",
+    "title": "Wisatawan Bersorak di Jeep",
+    "category": "WISATAWAN",
+    "mediaUrl": "/images/img_1_579_wisatawan_bersorak_di_jeep.png",
+    "createdAt": "2026-09-26T23:25:07.039Z"
+  },
+  {
+    "id": "gal-3",
+    "type": "INSTAGRAM_VIDEO",
+    "title": "Aksi Spektakuler Manuver Basah Kali Kuning",
+    "category": "VIDEO REELS",
+    "mediaUrl": "https://www.instagram.com/reel/C-xyz123/",
+    "instagramUrl": "https://www.instagram.com/reel/C-xyz123/",
+    "thumbnailUrl": "/images/img_1_581_manuver_air_kali_kuning.png",
+    "caption": "Sensasi cipratan air ekstrem bersama tim driver profesional! 🔥 #MerapiJeep #LavaTour",
+    "createdAt": "2026-09-27T23:25:07.039Z"
+  },
+  {
+    "id": "gal-4",
+    "type": "PHOTO",
+    "title": "Manuver Air Kali Kuning (Splash)",
+    "category": "JEEP ACTION",
+    "mediaUrl": "/images/img_1_581_manuver_air_kali_kuning.png",
+    "createdAt": "2026-09-27T23:25:07.039Z"
+  },
+  {
+    "id": "gal-5",
+    "type": "INSTAGRAM_VIDEO",
+    "title": "Golden Sunrise Magis Berlatar Puncak Merapi",
+    "category": "VIDEO REELS",
+    "mediaUrl": "https://www.instagram.com/reel/C-sunrise456/",
+    "instagramUrl": "https://www.instagram.com/reel/C-sunrise456/",
+    "thumbnailUrl": "/images/img_1_583_panorama_merapi_pagi_cerah.png",
+    "caption": "Matahari terbit jam 05.00 pagi dengan kabut tipis di Bunker Kaliadem. Wajib coba Paket Sunrise!",
+    "createdAt": "2026-09-28T23:25:07.039Z"
+  },
+  {
+    "id": "gal-6",
+    "type": "PHOTO",
+    "title": "Panorama Merapi Pagi Cerah",
+    "category": "DESTINASI",
+    "mediaUrl": "/images/img_1_583_panorama_merapi_pagi_cerah.png",
+    "createdAt": "2026-09-28T23:25:07.039Z"
+  },
+  {
+    "id": "gal-7",
+    "type": "PHOTO",
+    "title": "Spot Foto Batu Alien Merapi",
+    "category": "DESTINASI",
+    "mediaUrl": "/images/img_1_585_batu_alien_merapi.png",
+    "createdAt": "2026-09-29T23:25:07.039Z"
+  },
+  {
+    "id": "gal-8",
+    "type": "PHOTO",
+    "title": "Corporate Outing & Gathering Jeep",
+    "category": "WISATAWAN",
+    "mediaUrl": "/images/img_1_587_corporate_outing_jeep.png",
+    "createdAt": "2026-09-30T23:25:07.039Z"
+  }
+]
