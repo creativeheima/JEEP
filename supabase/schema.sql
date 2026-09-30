@@ -33,7 +33,10 @@ create index if not exists idx_bookings_phone on public.bookings (customer_phone
 create index if not exists idx_bookings_status on public.bookings (approval_status);
 create index if not exists idx_bookings_created on public.bookings (created_at desc);
 
--- 3. Row Level Security (RLS)
+-- 3. Row Level Security (RLS) & Hak Akses
+grant all on table public.bookings to anon, authenticated, service_role;
+grant all on all sequences in schema public to anon, authenticated, service_role;
+
 alter table public.bookings enable row level security;
 
 -- Policy agar client web bisa memasukkan booking baru (Insert)
