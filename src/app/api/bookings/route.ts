@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getBookings, saveBookings, generateBookingCode } from '@/lib/bookingStore';
-import { Booking, CreateBookingInput } from '@/types/booking';
+import { Booking } from '@/types/booking';
 
 export async function GET(request: Request) {
   try {
@@ -34,15 +34,26 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body: CreateBookingInput = await request.json();
+    const body = await request.json();
 
     if (!body.customerName || !body.customerPhone) {
-      return NextResponse.json({ success: false, error: 'Nama dan Nomor HP wajib diisi' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Nama dan Nomor WhatsApp wajib diisi' }, { status: 400 });
     }
 
-    const total = Number(body.totalAmount) || 0;
+    const pax = Number(body.paxCount) || 4;
+    const jeep = Number(body.jeepCount) || Math.ceil(pax / 4);
+
+    // Default estimate pricing if not yet set by admin
+    let defaultPrice = 500000 * jeep;
+    if (body.packageName?.includes('Short')) defaultPrice = 400000 * jeep;
+    if (body.packageName?.includes('Long')) defaultPrice = 600000 * jeep;
+    if (body.packageName?.includes('Sunrise')) defaultPrice = 550000 * jeep;
+
+    const total = body.totalAmount !== undefined ? Number(body.totalAmount) : defaultPrice;
     const dp = Number(body.dpAmount) || 0;
     const remaining = Math.max(0, total - dp);
+
+    const isPending = body.approvalStatus === 'PENDING' || body.isClientSubmission === true;
 
     const newBooking: Booking = {
       id: 'bkg-' + Date.now(),
@@ -52,19 +63,21 @@ export async function POST(request: Request) {
       packageName: body.packageName || 'Paket Medium',
       tourDate: body.tourDate || new Date().toISOString().split('T')[0],
       tourTime: body.tourTime || '09:00 WIB',
-      paxCount: Number(body.paxCount) || 4,
-      jeepCount: Number(body.jeepCount) || 1,
+      paxCount: pax,
+      jeepCount: jeep,
       totalAmount: total,
       dpAmount: dp,
       remainingAmount: remaining,
-      paymentMethod: body.paymentMethod || 'Transfer Bank',
-      paymentStatus: remaining === 0 ? 'LUNAS' : (dp > 0 ? 'DP_DITERIMA' : 'MENUNGGU_PEMBAYARAN'),
-      approvalStatus: 'APPROVED',
+      paymentMethod: body.paymentMethod || 'Transfer BCA / Bank',
+      paymentStatus: isPending
+        ? 'MENUNGGU_PEMBAYARAN'
+        : (remaining === 0 ? 'LUNAS' : (dp > 0 ? 'DP_DITERIMA' : 'MENUNGGU_PEMBAYARAN')),
+      approvalStatus: isPending ? 'PENDING' : 'APPROVED',
       driverName: body.driverName || 'Menunggu Penugasan Driver',
       jeepNumber: body.jeepNumber || '-',
       notes: body.notes || '',
       createdAt: new Date().toISOString(),
-      approvedAt: new Date().toISOString(),
+      approvedAt: isPending ? undefined : new Date().toISOString(),
     };
 
     const bookings = getBookings();
