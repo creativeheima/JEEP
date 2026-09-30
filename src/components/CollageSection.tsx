@@ -71,7 +71,7 @@ export default function CollageSection({ onOpenBooking }: CollageSectionProps) {
               </div>
 
               {/* 100% Safety Badge */}
-              <div className="absolute -top-4 -right-4 bg-amber-400 text-slate-950 px-3.5 py-2 rounded-xl shadow-lg font-space font-extrabold text-xs flex items-center gap-1.5 border-2 border-white">
+              <div className="absolute -top-4 -right-2 sm:-right-4 bg-amber-400 text-slate-950 px-3.5 py-2 rounded-xl shadow-lg font-space font-extrabold text-xs flex items-center gap-1.5 border-2 border-white">
                 <Shield className="w-4 h-4 text-slate-950 fill-current" />
                 <div>
                   <div className="leading-none text-[11px] font-black">100% SAFETY</div>

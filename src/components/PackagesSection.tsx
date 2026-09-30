@@ -130,7 +130,7 @@ export default function PackagesSection({ onSelectPackage }: PackagesSectionProp
             >
               {/* Featured Ribbon */}
               {pkg.isFeatured && (
-                <div className="bg-amber-500 text-slate-950 font-space font-black text-[10px] tracking-wider py-1.5 px-4 text-center uppercase flex items-center justify-center gap-1.5 shadow-inner">
+                <div className="absolute top-0 inset-x-0 z-20 bg-amber-500 text-slate-950 font-space font-black text-[10px] tracking-wider py-1.5 px-4 text-center uppercase flex items-center justify-center gap-1.5 shadow-inner">
                   <Sparkles className="w-3.5 h-3.5 fill-current" />
                   <span>{pkg.featureText}</span>
                 </div>
@@ -148,7 +148,7 @@ export default function PackagesSection({ onSelectPackage }: PackagesSectionProp
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/25 to-transparent" />
                   
                   {/* Top Category Badge */}
-                  <div className="absolute top-3 left-3 flex items-center gap-1.5">
+                  <div className={`absolute left-3 flex items-center gap-1.5 ${pkg.isFeatured ? 'top-10' : 'top-3'}`}>
                     <span className={`px-2.5 py-1 rounded-md text-[10px] font-space font-extrabold tracking-wider ${
                       pkg.isFeatured ? 'bg-amber-400 text-slate-950' : 'bg-slate-950/80 text-white backdrop-blur-sm'
                     }`}>
@@ -157,7 +157,7 @@ export default function PackagesSection({ onSelectPackage }: PackagesSectionProp
                   </div>
 
                   {/* Duration Tag */}
-                  <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-md text-[10px] font-space font-bold text-slate-900 flex items-center gap-1">
+                  <div className={`absolute right-3 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-md text-[10px] font-space font-bold text-slate-900 flex items-center gap-1 ${pkg.isFeatured ? 'top-10' : 'top-3'}`}>
                     <Clock className="w-3 h-3 text-amber-600" />
                     <span>{pkg.duration}</span>
                   </div>

@@ -63,8 +63,8 @@ export default function ExperienceSection() {
             </div>
 
             {/* Big Quote */}
-            <div className="relative">
-              <Quote className="w-10 h-10 text-amber-200 absolute -top-4 -left-2 -z-0 opacity-60" />
+            <div className="relative pt-7">
+              <Quote className="w-8 h-8 text-amber-200 absolute -top-1 left-0 -z-0 opacity-60" />
               <p className="relative z-10 font-work text-base sm:text-lg text-slate-700 leading-relaxed italic">
                 “Awalnya ragu karena bawa anak-anak, tapi driver Mas Doni sangat perhatian dan mengemudi dengan sangat hati-hati di tanjakan curam. Pas masuk sungai Kali Kuning semua ketawa lepas. Foto-foto yang diambil driver hasilnya cinematic banget!”
               </p>
