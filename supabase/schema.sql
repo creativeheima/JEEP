@@ -85,3 +85,33 @@ insert into public.bookings (
   'APPROVED', 'Mas Agus (Unit 12)', 'AB 1928 MJ', 'Minta foto cinematic di Kali Kuning'
 )
 on conflict (id) do nothing;
+
+-- =================================================================
+-- 4. TABEL GALERI & VIDEO INSTAGRAM (public.gallery_items)
+-- =================================================================
+create table if not exists public.gallery_items (
+  id text primary key,
+  type text not null default 'PHOTO', -- 'PHOTO' atau 'INSTAGRAM_VIDEO'
+  title text not null,
+  category text not null default 'JEEP ACTION',
+  media_url text not null,
+  instagram_url text,
+  thumbnail_url text,
+  caption text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+grant all on table public.gallery_items to anon, authenticated, service_role;
+grant all on all sequences in schema public to anon, authenticated, service_role;
+
+alter table public.gallery_items enable row level security;
+
+drop policy if exists "Allow public select gallery" on public.gallery_items;
+create policy "Allow public select gallery" on public.gallery_items for select using (true);
+
+drop policy if exists "Allow public insert gallery" on public.gallery_items;
+create policy "Allow public insert gallery" on public.gallery_items for insert with check (true);
+
+drop policy if exists "Allow public delete gallery" on public.gallery_items;
+create policy "Allow public delete gallery" on public.gallery_items for delete using (true);
+

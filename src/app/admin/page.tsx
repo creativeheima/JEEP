@@ -33,9 +33,15 @@ import {
   Compass,
   Bell,
   CheckSquare,
-  X
+  X,
+  Camera,
+  Instagram,
+  Play,
+  Film,
+  Image as ImageIcon
 } from 'lucide-react';
 import { Booking } from '@/types/booking';
+import { GalleryItem, GalleryCategory } from '@/types/gallery';
 import { isClientAuthenticated, clearClientSession } from '@/lib/adminAuth';
 
 export default function AdminDashboardPage() {
@@ -45,7 +51,19 @@ export default function AdminDashboardPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'manual'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'manual' | 'gallery'>('pending');
+
+  // Gallery Management States
+  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
+  const [galleryLoading, setGalleryLoading] = useState(false);
+  const [galleryFormType, setGalleryFormType] = useState<'PHOTO' | 'INSTAGRAM_VIDEO'>('PHOTO');
+  const [galleryTitle, setGalleryTitle] = useState('');
+  const [galleryCategory, setGalleryCategory] = useState<GalleryCategory>('JEEP ACTION');
+  const [galleryMediaUrl, setGalleryMediaUrl] = useState('');
+  const [galleryInstagramUrl, setGalleryInstagramUrl] = useState('');
+  const [galleryThumbnailUrl, setGalleryThumbnailUrl] = useState('');
+  const [galleryCaption, setGalleryCaption] = useState('');
+  const [gallerySubmitting, setGallerySubmitting] = useState(false);
 
   // Approval Modal State (when admin clicks to approve a client's booking)
   const [approvingBooking, setApprovingBooking] = useState<Booking | null>(null);
@@ -245,6 +263,86 @@ export default function AdminDashboardPage() {
   const handleLogout = () => {
     clearClientSession();
     router.push('/admin/login');
+  };
+
+  // Gallery handlers
+  const fetchGalleryItems = async () => {
+    setGalleryLoading(true);
+    try {
+      const res = await fetch('/api/gallery');
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setGalleryItems(json.data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setGalleryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchGalleryItems();
+    }
+  }, [isAuthenticated]);
+
+  const handleAddGalleryItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!galleryTitle || !galleryMediaUrl) {
+      alert('Judul dan URL foto/media wajib diisi!');
+      return;
+    }
+
+    setGallerySubmitting(true);
+    try {
+      const res = await fetch('/api/gallery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: galleryFormType,
+          title: galleryTitle,
+          category: galleryCategory,
+          mediaUrl: galleryMediaUrl,
+          instagramUrl: galleryInstagramUrl || (galleryFormType === 'INSTAGRAM_VIDEO' ? galleryMediaUrl : undefined),
+          thumbnailUrl: galleryThumbnailUrl || undefined,
+          caption: galleryCaption || undefined,
+        }),
+      });
+
+      const json = await res.json();
+      if (json.success) {
+        alert(galleryFormType === 'PHOTO' ? 'Foto berhasil ditambahkan ke galeri!' : 'Video Instagram berhasil ditautkan ke galeri!');
+        setGalleryTitle('');
+        setGalleryMediaUrl('');
+        setGalleryInstagramUrl('');
+        setGalleryThumbnailUrl('');
+        setGalleryCaption('');
+        fetchGalleryItems();
+      } else {
+        alert('Gagal menyimpan: ' + (json.error || 'Terjadi kesalahan'));
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Terjadi kesalahan jaringan.');
+    } finally {
+      setGallerySubmitting(false);
+    }
+  };
+
+  const handleDeleteGalleryItem = async (id: string) => {
+    if (!confirm('Hapus item galeri ini?')) return;
+    try {
+      const res = await fetch(`/api/gallery/${id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (json.success) {
+        fetchGalleryItems();
+      } else {
+        alert('Gagal menghapus: ' + (json.error || 'Terjadi kesalahan'));
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const handleSendWa = (b: Booking) => {
@@ -498,6 +596,18 @@ export default function AdminDashboardPage() {
           >
             <PlusCircle className="w-4 h-4" />
             <span>+ Input Manual (Direct WA)</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('gallery')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-space font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              activeTab === 'gallery'
+                ? 'bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 text-white shadow-md'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Instagram className="w-4 h-4" />
+            <span>📸 Kelola Galeri & Video IG ({galleryItems.length})</span>
           </button>
         </div>
 
@@ -881,6 +991,330 @@ export default function AdminDashboardPage() {
                 {submittingManual ? 'Menyimpan...' : '✓ SIMPAN & TERBITKAN TIKET'}
               </button>
             </form>
+          </div>
+        )}
+
+        {/* TAB 4: KELOLA GALERI & VIDEO INSTAGRAM */}
+        {activeTab === 'gallery' && (
+          <div className="space-y-8 animate-in fade-in">
+            {/* Form Tambah Item Galeri / Video */}
+            <div className="bg-slate-900/80 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-xl space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-space font-bold text-xs text-pink-400 uppercase tracking-wider">
+                      KONTEN MEDIA & SOSIAL
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-400 border border-pink-500/30 text-[10px] font-space font-bold">
+                      LIVE ON HOMEPAGE
+                    </span>
+                  </div>
+                  <h3 className="font-outfit font-black text-2xl text-white">
+                    Kelola Galeri & Video Instagram
+                  </h3>
+                  <p className="font-work text-xs text-slate-400 mt-1">
+                    Tambahkan foto dokumentasi terbaru atau tautkan video reels dari akun Instagram agar muncul langsung di halaman utama website.
+                  </p>
+                </div>
+
+                {/* Toggle Mode: Foto vs Video Reels */}
+                <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-950 border border-slate-800 self-start sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGalleryFormType('PHOTO');
+                      setGalleryCategory('JEEP ACTION');
+                    }}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-space font-bold transition-all cursor-pointer ${
+                      galleryFormType === 'PHOTO'
+                        ? 'bg-amber-500 text-slate-950 shadow-md'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Camera className="w-4 h-4" />
+                    <span>+ Tambah Foto</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGalleryFormType('INSTAGRAM_VIDEO');
+                      setGalleryCategory('VIDEO REELS');
+                    }}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-space font-bold transition-all cursor-pointer ${
+                      galleryFormType === 'INSTAGRAM_VIDEO'
+                        ? 'bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 text-white shadow-md'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Instagram className="w-4 h-4" />
+                    <span>+ Tautkan Video IG</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Form Input */}
+              <form onSubmit={handleAddGalleryItem} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-work">
+                  {/* Judul Konten */}
+                  <div>
+                    <label className="font-space font-bold text-slate-300 block mb-1">
+                      {galleryFormType === 'PHOTO' ? 'Judul Foto *' : 'Judul Video Reels *'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={galleryTitle}
+                      onChange={(e) => setGalleryTitle(e.target.value)}
+                      placeholder={
+                        galleryFormType === 'PHOTO'
+                          ? 'Contoh: Rombongan Sunrise Bunker Kaliadem'
+                          : 'Contoh: Aksi Manuver Cipratan Air Kali Kuning'
+                      }
+                      className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-amber-400 outline-none"
+                    />
+                  </div>
+
+                  {/* Kategori */}
+                  <div>
+                    <label className="font-space font-bold text-slate-300 block mb-1">
+                      Kategori Tampilan
+                    </label>
+                    <select
+                      value={galleryCategory}
+                      onChange={(e) => setGalleryCategory(e.target.value as GalleryCategory)}
+                      className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-amber-400 outline-none"
+                    >
+                      {galleryFormType === 'PHOTO' ? (
+                        <>
+                          <option value="JEEP ACTION">JEEP ACTION (Manuver & Lintasan)</option>
+                          <option value="DESTINASI">DESTINASI (Spot Wisata & Alam)</option>
+                          <option value="WISATAWAN">WISATAWAN (Tamu & Rombongan)</option>
+                        </>
+                      ) : (
+                        <>
+                          <option value="VIDEO REELS">VIDEO REELS (Cuplikan Aksi Instagram)</option>
+                          <option value="JEEP ACTION">JEEP ACTION (Video Lintasan)</option>
+                          <option value="WISATAWAN">WISATAWAN (Video Testimoni Tamu)</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+
+                  {/* URL Media / URL Instagram */}
+                  <div className="md:col-span-2">
+                    <label className="font-space font-bold text-slate-300 block mb-1">
+                      {galleryFormType === 'PHOTO'
+                        ? 'URL / Link File Gambar *'
+                        : 'Link URL Video Instagram (Reels / Post) *'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={galleryMediaUrl}
+                      onChange={(e) => {
+                        setGalleryMediaUrl(e.target.value);
+                        if (galleryFormType === 'INSTAGRAM_VIDEO') {
+                          setGalleryInstagramUrl(e.target.value);
+                        }
+                      }}
+                      placeholder={
+                        galleryFormType === 'PHOTO'
+                          ? 'Contoh: /images/img_1_577_jeep_traversing_off-road_track.png atau https://.../foto.jpg'
+                          : 'Contoh: https://www.instagram.com/reel/C-xyz12345/ atau https://www.instagram.com/p/...'
+                      }
+                      className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-amber-400 outline-none font-mono"
+                    />
+                    <span className="text-[11px] text-slate-500 mt-1 block">
+                      {galleryFormType === 'PHOTO'
+                        ? 'Bisa menggunakan path gambar lokal di folder public/images atau link URL online.'
+                        : 'Masukkan tautan langsung video reel Instagram publik.'}
+                    </span>
+                  </div>
+
+                  {/* Fields Khusus Video Instagram */}
+                  {galleryFormType === 'INSTAGRAM_VIDEO' && (
+                    <>
+                      <div>
+                        <label className="font-space font-bold text-slate-300 block mb-1">
+                          URL Cover Thumbnail (Gambar Depan)
+                        </label>
+                        <input
+                          type="text"
+                          value={galleryThumbnailUrl}
+                          onChange={(e) => setGalleryThumbnailUrl(e.target.value)}
+                          placeholder="/images/img_1_581_manuver_air_kali_kuning.png"
+                          className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-amber-400 outline-none font-mono"
+                        />
+                        <span className="text-[11px] text-slate-500 mt-1 block">
+                          Jika dikosongkan, akan menggunakan cover default.
+                        </span>
+                      </div>
+
+                      <div>
+                        <label className="font-space font-bold text-slate-300 block mb-1">
+                          Caption / Keterangan Singkat
+                        </label>
+                        <input
+                          type="text"
+                          value={galleryCaption}
+                          onChange={(e) => setGalleryCaption(e.target.value)}
+                          placeholder="Sensasi cipratan air ekstrem bersama tim driver profesional! 🔥"
+                          className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-amber-400 outline-none"
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="pt-2 flex items-center justify-end">
+                  <button
+                    type="submit"
+                    disabled={gallerySubmitting}
+                    className={`px-6 py-3 rounded-xl font-space font-bold text-xs flex items-center gap-2 cursor-pointer shadow-lg transition-all ${
+                      galleryFormType === 'PHOTO'
+                        ? 'amber-gradient-btn text-slate-950'
+                        : 'bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 text-white hover:brightness-110'
+                    }`}
+                  >
+                    {galleryFormType === 'PHOTO' ? <Camera className="w-4 h-4" /> : <Instagram className="w-4 h-4" />}
+                    <span>
+                      {gallerySubmitting
+                        ? 'Menyimpan...'
+                        : galleryFormType === 'PHOTO'
+                        ? '✓ Simpan & Terbitkan Foto'
+                        : '✓ Tautkan Video Instagram'}
+                    </span>
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* List Galeri Saat Ini */}
+            <div className="bg-slate-900/80 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-xl space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+                <div>
+                  <h4 className="font-outfit font-black text-xl text-white flex items-center gap-2">
+                    <span>Daftar Konten Galeri & Video</span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 text-xs font-mono font-bold">
+                      {galleryItems.length} Konten
+                    </span>
+                  </h4>
+                  <p className="font-work text-xs text-slate-400 mt-1">
+                    Semua foto dan video di bawah ini langsung tampil di website pada bagian "Momen Seru di Jalur Merapi".
+                  </p>
+                </div>
+
+                <button
+                  onClick={fetchGalleryItems}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-space font-bold transition-colors cursor-pointer self-start sm:self-auto"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${galleryLoading ? 'animate-spin' : ''}`} />
+                  <span>Refresh Media</span>
+                </button>
+              </div>
+
+              {galleryLoading ? (
+                <div className="text-center py-12 text-slate-500 font-work text-sm">
+                  Memuat konten galeri...
+                </div>
+              ) : galleryItems.length === 0 ? (
+                <div className="text-center py-12 bg-slate-950/50 rounded-2xl border border-slate-800 text-slate-500 font-work text-sm">
+                  Belum ada konten galeri. Gunakan form di atas untuk menambahkan foto atau video IG.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {galleryItems.map((item) => {
+                    const isVideo = item.type === 'INSTAGRAM_VIDEO' || item.category === 'VIDEO REELS';
+                    const cover = isVideo ? (item.thumbnailUrl || item.mediaUrl) : item.mediaUrl;
+
+                    return (
+                      <div
+                        key={item.id}
+                        className="bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden flex flex-col group hover:border-slate-700 transition-all shadow-md"
+                      >
+                        {/* Image / Thumbnail Preview */}
+                        <div className="relative h-40 w-full bg-slate-900 overflow-hidden">
+                          {cover ? (
+                            <img
+                              src={cover}
+                              alt={item.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-slate-700">
+                              <Instagram className="w-12 h-12" />
+                            </div>
+                          )}
+
+                          {/* Badge Tipe */}
+                          <div className="absolute top-2 left-2">
+                            {isVideo ? (
+                              <span className="flex items-center gap-1 bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 text-white font-space font-bold text-[9px] px-2 py-0.5 rounded shadow">
+                                <Instagram className="w-3 h-3" />
+                                REELS
+                              </span>
+                            ) : (
+                              <span className="bg-slate-950/80 backdrop-blur-sm text-white font-space font-bold text-[9px] px-2 py-0.5 rounded">
+                                {item.category}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Play overlay for video */}
+                          {isVideo && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                              <div className="w-10 h-10 rounded-full bg-pink-600/90 text-white flex items-center justify-center shadow-lg">
+                                <Play className="w-4 h-4 ml-0.5 fill-white" />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Info & Action */}
+                        <div className="p-3.5 flex-1 flex flex-col justify-between space-y-3 font-work">
+                          <div>
+                            <h5 className="font-outfit font-bold text-white text-xs line-clamp-1">
+                              {item.title}
+                            </h5>
+                            {item.caption && (
+                              <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
+                                {item.caption}
+                              </p>
+                            )}
+                            <span className="text-[10px] text-slate-500 mt-1 block font-mono truncate">
+                              {item.mediaUrl}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-2 border-t border-slate-900">
+                            <a
+                              href={item.instagramUrl || item.mediaUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-[11px] font-space font-bold text-amber-400 hover:text-amber-300 transition-colors"
+                            >
+                              <span>Buka</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+
+                            <button
+                              onClick={() => handleDeleteGalleryItem(item.id)}
+                              className="p-1.5 rounded-lg bg-red-950/40 text-red-400 hover:bg-red-900/60 hover:text-white transition-colors cursor-pointer"
+                              title="Hapus Media"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
           </div>
         )}
 

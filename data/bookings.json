@@ -1,5 +1,26 @@
 [
   {
+    "id": "bkg-1790810121176",
+    "bookingCode": "MJA-2026-7460",
+    "customerName": "Testing Supabase Live",
+    "customerPhone": "089911223344",
+    "packageName": "Paket Sunrise",
+    "tourDate": "2026-10-10",
+    "tourTime": "04:30 WIB",
+    "paxCount": 4,
+    "jeepCount": 1,
+    "totalAmount": 550000,
+    "dpAmount": 200000,
+    "remainingAmount": 350000,
+    "paymentMethod": "Transfer BCA / Bank",
+    "paymentStatus": "DP_DITERIMA",
+    "approvalStatus": "APPROVED",
+    "driverName": "Menunggu Penugasan Driver",
+    "jeepNumber": "-",
+    "notes": "Deal WA approved",
+    "createdAt": "2026-09-30T23:15:21.176Z"
+  },
+  {
     "id": "bkg-client-1",
     "bookingCode": "MJA-2026-088",
     "customerName": "Ahmad Fauzi & Rombongan",
