@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { ArrowUpRight, Compass, Sparkles } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 
 interface DestinationsSectionProps {
   onSelectDestination?: (name: string) => void;

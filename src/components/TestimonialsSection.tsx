@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Star, Quote, CheckCircle2 } from 'lucide-react';
+import { Star, CheckCircle2 } from 'lucide-react';
 
 export default function TestimonialsSection() {
   const testimonials = [

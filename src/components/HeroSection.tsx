@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { ArrowRight, ChevronDown, Sparkles, MapPin } from 'lucide-react';
+import { ArrowRight, ChevronDown } from 'lucide-react';
 
 interface HeroSectionProps {
   onOpenBooking?: () => void;

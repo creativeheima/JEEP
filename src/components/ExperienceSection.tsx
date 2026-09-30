@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { Star, Quote, Instagram, CheckCircle } from 'lucide-react';
+import { Star, Quote, Instagram } from 'lucide-react';
 
 export default function ExperienceSection() {
   return (

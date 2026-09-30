@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { Users, Clock, Check, Sparkles, Flame, Sun, Compass } from 'lucide-react';
+import { Users, Clock, Check, Sparkles, Compass } from 'lucide-react';
 
 interface PackagesSectionProps {
   onSelectPackage?: (pkgName: string, price: string) => void;
