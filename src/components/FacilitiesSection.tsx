@@ -58,7 +58,8 @@ export default function FacilitiesSection() {
   ];
 
   return (
-    <section id="fasilitas" className="relative py-20 lg:py-28 bg-[#fbfbfe] overflow-hidden border-t border-slate-200/60">
+    <section id="fasilitas" className="relative py-20 lg:py-28 bg-[#fbfbfe] overflow-hidden border-t border-slate-200/60 section-edge">
+      <div className="section-line" aria-hidden="true" />
       {/* Background Watermark */}
       <div className="absolute inset-0 pointer-events-none opacity-20">
         <Image

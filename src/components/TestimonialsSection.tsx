@@ -29,7 +29,8 @@ export default function TestimonialsSection() {
   ];
 
   return (
-    <section className="py-20 lg:py-28 bg-[#fbfbfe] border-t border-slate-200/60 overflow-hidden">
+    <section className="py-20 lg:py-28 bg-[#fbfbfe] border-t border-slate-200/60 overflow-hidden section-edge">
+      <div className="section-line" aria-hidden="true" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Header */}

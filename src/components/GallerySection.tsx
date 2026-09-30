@@ -54,7 +54,8 @@ export default function GallerySection() {
     : photos.filter(p => p.category === activeTab);
 
   return (
-    <section id="galeri" className="py-20 lg:py-28 bg-white border-t border-slate-100 overflow-hidden">
+    <section id="galeri" className="py-20 lg:py-28 bg-white border-t border-slate-100 overflow-hidden section-edge">
+      <div className="section-line" aria-hidden="true" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Header and Filter Tabs */}

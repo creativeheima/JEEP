@@ -14,9 +14,11 @@ import TestimonialsSection from '@/components/TestimonialsSection';
 import CtaSection from '@/components/CtaSection';
 import Footer from '@/components/Footer';
 import BookingModal from '@/components/BookingModal';
+import CheckTicketModal from '@/components/CheckTicketModal';
 
 export default function JeepLanding() {
   const [bookingOpen, setBookingOpen] = useState(false);
+  const [checkTicketOpen, setCheckTicketOpen] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState('Paket Medium');
 
   const handleOpenBooking = (packageName?: string) => {
@@ -29,7 +31,10 @@ export default function JeepLanding() {
   return (
     <div className="min-h-screen flex flex-col bg-white selection:bg-amber-500 selection:text-white">
       {/* Navigation Bar */}
-      <Navbar onOpenBooking={() => handleOpenBooking()} />
+      <Navbar
+        onOpenBooking={() => handleOpenBooking()}
+        onOpenCheckTicket={() => setCheckTicketOpen(true)}
+      />
 
       {/* Main Content Sections (1 to 10 matching Figma) */}
       <main className="flex-1">
@@ -76,6 +81,12 @@ export default function JeepLanding() {
         isOpen={bookingOpen}
         onClose={() => setBookingOpen(false)}
         initialPackage={selectedPackage}
+      />
+
+      {/* Check Ticket Modal */}
+      <CheckTicketModal
+        isOpen={checkTicketOpen}
+        onClose={() => setCheckTicketOpen(false)}
       />
     </div>
   );

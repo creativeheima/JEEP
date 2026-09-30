@@ -10,7 +10,8 @@ interface CollageSectionProps {
 
 export default function CollageSection({ onOpenBooking }: CollageSectionProps) {
   return (
-    <section id="tentang" className="relative py-20 lg:py-28 bg-white overflow-hidden border-t border-slate-100">
+    <section id="tentang" className="relative py-20 lg:py-28 bg-white overflow-hidden border-t border-slate-100 section-edge">
+      <div className="section-line" aria-hidden="true" />
       {/* Background Watermark */}
       <div className="absolute inset-0 pointer-events-none opacity-20">
         <Image

@@ -53,3 +53,43 @@ body {
   background: linear-gradient(135deg, #fbbf24 0%, #ea580c 100%);
   box-shadow: 0 10px 25px -5px rgba(217, 119, 6, 0.4);
 }
+
+/* Section transition: soft top shade + amber hairline with diamond marker */
+.section-edge {
+  position: relative;
+}
+.section-edge::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 96px;
+  background: linear-gradient(to bottom, rgba(148, 163, 184, 0.14), rgba(148, 163, 184, 0));
+  pointer-events: none;
+  z-index: 1;
+}
+.section-edge::after {
+  content: '';
+  position: absolute;
+  top: 7px;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  transform: translateX(-50%) rotate(45deg);
+  background: #f59e0b;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.35);
+  pointer-events: none;
+  z-index: 30;
+}
+.section-edge > .section-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(245, 158, 11, 0.55) 30%, rgba(245, 158, 11, 0.55) 70%, transparent);
+  pointer-events: none;
+  z-index: 29;
+}

@@ -118,14 +118,9 @@ export default function Footer() {
                 </a>
               </li>
               <li>
-                <a href="#fasilitas" className="hover:text-amber-400 transition-colors">
-                  Standar Keselamatan 4x4
-                </a>
-              </li>
-              <li>
-                <a href="#galeri" className="hover:text-amber-400 transition-colors">
-                  Galeri Momen Sunrise
-                </a>
+                <Link href="/admin" className="text-amber-400 font-bold hover:text-amber-300 transition-colors">
+                  → Portal Admin Basecamp (Input Deal WA)
+                </Link>
               </li>
             </ul>
           </div>

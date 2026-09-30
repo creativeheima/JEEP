@@ -10,7 +10,8 @@ interface CtaSectionProps {
 
 export default function CtaSection({ onOpenBooking }: CtaSectionProps) {
   return (
-    <section id="kontak" className="relative py-24 lg:py-32 bg-white overflow-hidden border-t border-slate-200">
+    <section id="kontak" className="relative py-24 lg:py-32 bg-white overflow-hidden border-t border-slate-200 section-edge">
+      <div className="section-line" aria-hidden="true" />
       {/* Background Watermark with subtle sunrise overlay */}
       <div className="absolute inset-0 pointer-events-none opacity-20">
         <Image
