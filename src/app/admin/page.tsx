@@ -38,10 +38,14 @@ import {
   Instagram,
   Play,
   Film,
-  Image as ImageIcon
+  Image as ImageIcon,
+  ArrowUp,
+  ArrowDown,
+  Sliders
 } from 'lucide-react';
 import { Booking } from '@/types/booking';
 import { GalleryItem, GalleryCategory } from '@/types/gallery';
+import { HeroSlide, MAX_HERO_SLIDES } from '@/types/heroSlide';
 import { isClientAuthenticated, clearClientSession } from '@/lib/adminAuth';
 
 export default function AdminDashboardPage() {
@@ -51,7 +55,14 @@ export default function AdminDashboardPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'manual' | 'gallery'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'manual' | 'gallery' | 'hero'>('pending');
+
+  // Hero Slideshow States (Max 5 photos)
+  const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([]);
+  const [heroLoading, setHeroLoading] = useState(false);
+  const [newSlideImage, setNewSlideImage] = useState('');
+  const [newSlideTitle, setNewSlideTitle] = useState('');
+  const [slideSubmitting, setSlideSubmitting] = useState(false);
 
   // Gallery Management States
   const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
@@ -345,6 +356,88 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // Hero Slideshow handlers
+  const fetchHeroSlides = async () => {
+    setHeroLoading(true);
+    try {
+      const res = await fetch('/api/hero-slides');
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setHeroSlides(json.data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setHeroLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchHeroSlides();
+    }
+  }, [isAuthenticated]);
+
+  const handleAddHeroSlide = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSlideImage) {
+      alert('URL / Path gambar wajib diisi!');
+      return;
+    }
+
+    if (heroSlides.length >= MAX_HERO_SLIDES) {
+      alert(`Maksimal hanya ${MAX_HERO_SLIDES} foto untuk slideshow beranda! Hapus salah satu foto terlebih dahulu.`);
+      return;
+    }
+
+    setSlideSubmitting(true);
+    try {
+      const res = await fetch('/api/hero-slides', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageUrl: newSlideImage,
+          title: newSlideTitle || 'Slide Foto Beranda',
+        }),
+      });
+
+      const json = await res.json();
+      if (json.success) {
+        alert('Foto slide berhasil ditambahkan ke beranda!');
+        setNewSlideImage('');
+        setNewSlideTitle('');
+        fetchHeroSlides();
+      } else {
+        alert('Gagal: ' + (json.error || 'Terjadi kesalahan'));
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Terjadi kesalahan jaringan.');
+    } finally {
+      setSlideSubmitting(false);
+    }
+  };
+
+  const handleDeleteHeroSlide = async (id: string) => {
+    if (heroSlides.length <= 1) {
+      alert('Minimal harus ada 1 foto untuk banner beranda!');
+      return;
+    }
+    if (!confirm('Hapus foto ini dari slideshow beranda?')) return;
+
+    try {
+      const res = await fetch(`/api/hero-slides/${id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (json.success) {
+        fetchHeroSlides();
+      } else {
+        alert('Gagal menghapus: ' + (json.error || 'Terjadi kesalahan'));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleSendWa = (b: Booking) => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const invoiceUrl = `${origin}/invoice/${b.bookingCode}`;
@@ -608,6 +701,18 @@ export default function AdminDashboardPage() {
           >
             <Instagram className="w-4 h-4" />
             <span>📸 Kelola Galeri & Video IG ({galleryItems.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('hero')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-space font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              activeTab === 'hero'
+                ? 'bg-amber-500 text-slate-950 shadow-md font-black'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Sliders className="w-4 h-4" />
+            <span>🖼️ Slideshow Beranda ({heroSlides.length}/{MAX_HERO_SLIDES})</span>
           </button>
         </div>
 
@@ -1311,6 +1416,238 @@ export default function AdminDashboardPage() {
                       </div>
                     );
                   })}
+                </div>
+              )}
+            </div>
+
+          </div>
+        )}
+
+        {/* TAB 5: KELOLA SLIDESHOW BANNER BERANDA (MAKSIMAL 5 FOTO) */}
+        {activeTab === 'hero' && (
+          <div className="space-y-8 animate-in fade-in">
+            {/* Header & Status Card */}
+            <div className="bg-slate-900/80 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-xl space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-space font-bold text-xs text-amber-400 uppercase tracking-wider">
+                      HERO BANNER CAROUSEL
+                    </span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-space font-black uppercase border ${
+                      heroSlides.length >= MAX_HERO_SLIDES
+                        ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                        : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                    }`}>
+                      KUOTA: {heroSlides.length} / {MAX_HERO_SLIDES} FOTO
+                    </span>
+                  </div>
+                  <h3 className="font-outfit font-black text-2xl text-white">
+                    Kelola Slideshow Foto Beranda
+                  </h3>
+                  <p className="font-work text-xs text-slate-400 mt-1 max-w-2xl">
+                    Foto-foto di bawah ini ditampilkan sebagai latar belakang utama beranda yang dapat <strong>bergeser (slide show) kanan dan kiri</strong> secara otomatis maupun manual oleh pengunjung.
+                  </p>
+                </div>
+
+                <button
+                  onClick={fetchHeroSlides}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-space font-bold transition-colors cursor-pointer self-start sm:self-auto"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${heroLoading ? 'animate-spin' : ''}`} />
+                  <span>Refresh Slide</span>
+                </button>
+              </div>
+
+              {/* Notice if maximum 5 slides reached */}
+              {heroSlides.length >= MAX_HERO_SLIDES ? (
+                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3 text-xs text-amber-200">
+                  <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="text-white block font-space font-bold uppercase mb-0.5">
+                      Batas Maksimal 5 Foto Tercapai
+                    </strong>
+                    <span>
+                      Slideshow beranda telah memiliki 5 foto aktif. Jika ingin mengganti atau menambahkan foto baru, silakan hapus salah satu foto pada daftar di bawah terlebih dahulu.
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                /* Form Tambah Slide Baru */
+                <form onSubmit={handleAddHeroSlide} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-work">
+                    <div>
+                      <label className="font-space font-bold text-slate-300 block mb-1">
+                        Judul / Label Foto *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={newSlideTitle}
+                        onChange={(e) => setNewSlideTitle(e.target.value)}
+                        placeholder="Contoh: Pesona Sunrise Gunung Merapi Fajar"
+                        className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-amber-400 outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="font-space font-bold text-slate-300 block mb-1">
+                        URL / Path Gambar Foto *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={newSlideImage}
+                        onChange={(e) => setNewSlideImage(e.target.value)}
+                        placeholder="/images/img_1_6_merapi_jeep_adventure_golden_hour_experience.png"
+                        className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-amber-400 outline-none font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Preset Quick Fill Recommendations */}
+                  <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
+                    <span className="text-[11px] font-space font-bold text-slate-400 block mb-1.5 uppercase">
+                      💡 Pilih Cepat dari Foto Dokumentasi Tersedia:
+                    </span>
+                    <div className="flex flex-wrap gap-2 text-[11px]">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewSlideImage('/images/img_1_6_merapi_jeep_adventure_golden_hour_experience.png');
+                          setNewSlideTitle('Golden Sunrise Merapi Experience');
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono transition-colors cursor-pointer"
+                      >
+                        + Sunrise Golden Hour
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewSlideImage('/images/img_1_53_jeep_cruising_through_volcanic_off-road_track_mount_merapi.png');
+                          setNewSlideTitle('Jalur Lava & Offroad Track');
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono transition-colors cursor-pointer"
+                      >
+                        + Jalur Lava Track
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewSlideImage('/images/img_1_193_paket_medium_kali_kuning_splashing_water.png');
+                          setNewSlideTitle('Manuver Basah Kali Kuning');
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono transition-colors cursor-pointer"
+                      >
+                        + Splash Kali Kuning
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewSlideImage('/images/img_1_372_bunker_kaliadem.png');
+                          setNewSlideTitle('Bunker Kaliadem Megah');
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono transition-colors cursor-pointer"
+                      >
+                        + Bunker Kaliadem
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end pt-1">
+                    <button
+                      type="submit"
+                      disabled={slideSubmitting}
+                      className="amber-gradient-btn px-6 py-2.5 rounded-xl font-space font-bold text-xs text-slate-950 flex items-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20"
+                    >
+                      <Sliders className="w-4 h-4" />
+                      <span>{slideSubmitting ? 'Menyimpan...' : `+ Tambahkan Foto ke Slideshow (${heroSlides.length}/5)`}</span>
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+
+            {/* List 5 Slides Saat Ini */}
+            <div className="bg-slate-900/80 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-xl space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+                <div>
+                  <h4 className="font-outfit font-black text-xl text-white flex items-center gap-2">
+                    <span>Urutan Slide yang Aktif di Beranda</span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-amber-400 text-xs font-mono font-bold">
+                      {heroSlides.length} dari {MAX_HERO_SLIDES} Slide
+                    </span>
+                  </h4>
+                  <p className="font-work text-xs text-slate-400 mt-1">
+                    Pengunjung dapat menggeser foto ini menggunakan tombol panah kiri/kanan atau menunggu slide berganti otomatis.
+                  </p>
+                </div>
+              </div>
+
+              {heroLoading ? (
+                <div className="text-center py-12 text-slate-500 font-work text-sm">
+                  Memuat data slide...
+                </div>
+              ) : heroSlides.length === 0 ? (
+                <div className="text-center py-12 bg-slate-950/50 rounded-2xl border border-slate-800 text-slate-500 font-work text-sm">
+                  Belum ada slide aktif. Tambahkan foto melalui form di atas.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                  {heroSlides.map((slide, idx) => (
+                    <div
+                      key={slide.id || idx}
+                      className="bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden flex flex-col group hover:border-amber-500/50 transition-all shadow-md"
+                    >
+                      {/* Thumbnail Preview */}
+                      <div className="relative h-44 w-full bg-slate-900 overflow-hidden">
+                        <img
+                          src={slide.imageUrl}
+                          alt={slide.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                        {/* Slide Number Badge */}
+                        <div className="absolute top-2 left-2">
+                          <span className="bg-slate-950/90 backdrop-blur-sm text-amber-400 font-space font-black text-[10px] px-2.5 py-0.5 rounded-md border border-amber-500/40 shadow">
+                            SLIDE #{idx + 1}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Info & Action */}
+                      <div className="p-3.5 flex-1 flex flex-col justify-between space-y-3 font-work">
+                        <div>
+                          <h5 className="font-outfit font-bold text-white text-xs line-clamp-1">
+                            {slide.title || `Slide ${idx + 1}`}
+                          </h5>
+                          <span className="text-[10px] text-slate-500 mt-1 block font-mono truncate">
+                            {slide.imageUrl}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-900">
+                          <a
+                            href={slide.imageUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-[11px] font-space font-bold text-amber-400 hover:text-amber-300 transition-colors"
+                          >
+                            <span>Lihat</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+
+                          <button
+                            onClick={() => handleDeleteHeroSlide(slide.id)}
+                            className="p-1.5 rounded-lg bg-red-950/40 text-red-400 hover:bg-red-900/60 hover:text-white transition-colors cursor-pointer"
+                            title="Hapus Slide"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

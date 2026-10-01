@@ -115,3 +115,32 @@ create policy "Allow public insert gallery" on public.gallery_items for insert w
 drop policy if exists "Allow public delete gallery" on public.gallery_items;
 create policy "Allow public delete gallery" on public.gallery_items for delete using (true);
 
+-- =================================================================
+-- 5. TABEL SLIDESHOW BERANDA (public.hero_slides) - MAKSIMAL 5 FOTO
+-- =================================================================
+create table if not exists public.hero_slides (
+  id text primary key,
+  image_url text not null,
+  title text not null default '',
+  order_index integer not null default 1,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+grant all on table public.hero_slides to anon, authenticated, service_role;
+grant all on all sequences in schema public to anon, authenticated, service_role;
+
+alter table public.hero_slides enable row level security;
+
+drop policy if exists "Allow public select hero_slides" on public.hero_slides;
+create policy "Allow public select hero_slides" on public.hero_slides for select using (true);
+
+drop policy if exists "Allow public insert hero_slides" on public.hero_slides;
+create policy "Allow public insert hero_slides" on public.hero_slides for insert with check (true);
+
+drop policy if exists "Allow public update hero_slides" on public.hero_slides;
+create policy "Allow public update hero_slides" on public.hero_slides for update using (true);
+
+drop policy if exists "Allow public delete hero_slides" on public.hero_slides;
+create policy "Allow public delete hero_slides" on public.hero_slides for delete using (true);
+
+

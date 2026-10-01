@@ -1,36 +1,172 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { ArrowRight, ChevronDown } from 'lucide-react';
+import { ArrowRight, ChevronDown, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { HeroSlide } from '@/types/heroSlide';
 
 interface HeroSectionProps {
   onOpenBooking?: () => void;
 }
 
+const DEFAULT_SLIDES: HeroSlide[] = [
+  {
+    id: 'slide-1',
+    imageUrl: '/images/img_1_6_merapi_jeep_adventure_golden_hour_experience.png',
+    title: 'Golden Sunrise Merapi Experience',
+    order: 1,
+    createdAt: '',
+  },
+  {
+    id: 'slide-2',
+    imageUrl: '/images/img_1_53_jeep_cruising_through_volcanic_off-road_track_mount_merapi.png',
+    title: 'Ekspedisi Jalur Vulkanik & Lava Track',
+    order: 2,
+    createdAt: '',
+  },
+  {
+    id: 'slide-3',
+    imageUrl: '/images/img_1_193_paket_medium_kali_kuning_splashing_water.png',
+    title: 'Sensasi Manuver Basah Kali Kuning',
+    order: 3,
+    createdAt: '',
+  },
+  {
+    id: 'slide-4',
+    imageUrl: '/images/img_1_372_bunker_kaliadem.png',
+    title: 'Pesona Bersejarah Bunker Kaliadem',
+    order: 4,
+    createdAt: '',
+  },
+  {
+    id: 'slide-5',
+    imageUrl: '/images/img_1_443_travelers_smiling_in_4x4_jeep_with_mount_merapi_in_the_background.png',
+    title: 'Momen Bahagia Wisatawan & Keluarga',
+    order: 5,
+    createdAt: '',
+  },
+];
+
 export default function HeroSection({ onOpenBooking }: HeroSectionProps) {
+  const [slides, setSlides] = useState<HeroSlide[]>(DEFAULT_SLIDES);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const touchStartX = useRef<number | null>(null);
+
+  // Fetch dynamic slides from server API
+  useEffect(() => {
+    fetch('/api/hero-slides')
+      .then(res => res.json())
+      .then(json => {
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          setSlides(json.data);
+        }
+      })
+      .catch(err => console.error('Error fetching hero slides:', err));
+  }, []);
+
+  // Auto-play slideshow every 6 seconds
+  useEffect(() => {
+    if (slides.length <= 1 || isPaused) return;
+
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % slides.length);
+    }, 6000);
+
+    return () => clearInterval(timer);
+  }, [slides.length, isPaused]);
+
+  const nextSlide = () => {
+    setCurrentIndex((prev) => (prev + 1) % slides.length);
+  };
+
+  const prevSlide = () => {
+    setCurrentIndex((prev) => (prev - 1 + slides.length) % slides.length);
+  };
+
+  const goToSlide = (index: number) => {
+    setCurrentIndex(index);
+  };
+
+  // Touch swipe support for mobile
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const diff = touchStartX.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 40) {
+      if (diff > 0) nextSlide();
+      else prevSlide();
+    }
+    touchStartX.current = null;
+  };
+
   return (
-    <section id="hero" className="relative min-h-[820px] flex items-center justify-center pt-20 sm:pt-24 pb-16 overflow-hidden bg-white">
-      {/* Background Watermark / Golden Hour Image with soft atmospheric fades */}
-      <div className="absolute inset-0 z-0">
-        <div className="relative w-full h-full">
-          <Image
-            src="/images/img_1_6_merapi_jeep_adventure_golden_hour_experience.png"
-            alt="Merapi Jeep Adventure Golden Hour Experience"
-            fill
-            priority
-            className="object-cover object-center opacity-85 scale-105 transition-transform duration-1000"
-          />
-          {/* Subtle gradients from Figma (overlay to blend top/bottom smoothly) */}
-          <div className="absolute inset-0 bg-gradient-to-t from-white via-white/40 to-white/70" />
-          <div className="absolute inset-0 bg-gradient-to-b from-white/90 via-transparent to-white" />
-        </div>
+    <section
+      id="hero"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      className="relative min-h-[820px] lg:min-h-[860px] flex items-center justify-center pt-20 sm:pt-24 pb-16 overflow-hidden bg-white select-none"
+    >
+      {/* Background Slideshow Layer */}
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        {slides.map((slide, idx) => {
+          const isActive = idx === currentIndex;
+          return (
+            <div
+              key={slide.id || idx}
+              className={`absolute inset-0 transition-all duration-1000 ease-in-out ${
+                isActive
+                  ? 'opacity-85 scale-100 z-10'
+                  : 'opacity-0 scale-105 pointer-events-none z-0'
+              }`}
+            >
+              <Image
+                src={slide.imageUrl}
+                alt={slide.title || 'Foto Petualangan Merapi Jeep'}
+                fill
+                priority={idx === 0}
+                className="object-cover object-center"
+              />
+            </div>
+          );
+        })}
+
+        {/* Soft atmospheric gradient overlays to ensure text readability */}
+        <div className="absolute inset-0 z-20 bg-gradient-to-t from-white via-white/40 to-white/70 pointer-events-none" />
+        <div className="absolute inset-0 z-20 bg-gradient-to-b from-white/90 via-transparent to-white pointer-events-none" />
       </div>
 
-      {/* Content Container */}
-      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 text-center flex flex-col items-center">
-        {/* Top Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-50/90 border border-amber-300/80 shadow-sm mb-6 backdrop-blur-sm">
+      {/* Left Navigation Arrow */}
+      {slides.length > 1 && (
+        <button
+          onClick={prevSlide}
+          aria-label="Slide Sebelumnya"
+          className="absolute left-3 sm:left-6 lg:left-10 z-30 p-2.5 sm:p-3 rounded-full bg-white/80 hover:bg-white text-slate-800 hover:text-orange-600 shadow-lg shadow-slate-900/10 border border-slate-200/80 backdrop-blur-md transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer"
+        >
+          <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+        </button>
+      )}
+
+      {/* Right Navigation Arrow */}
+      {slides.length > 1 && (
+        <button
+          onClick={nextSlide}
+          aria-label="Slide Berikutnya"
+          className="absolute right-3 sm:right-6 lg:right-10 z-30 p-2.5 sm:p-3 rounded-full bg-white/80 hover:bg-white text-slate-800 hover:text-orange-600 shadow-lg shadow-slate-900/10 border border-slate-200/80 backdrop-blur-md transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer"
+        >
+          <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+        </button>
+      )}
+
+      {/* Center Content Container */}
+      <div className="relative z-20 max-w-5xl mx-auto px-4 sm:px-6 text-center flex flex-col items-center">
+        {/* Top Badge with Active Slide Tag */}
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-50/95 border border-amber-300/80 shadow-sm mb-6 backdrop-blur-sm">
           <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
           <span className="font-space font-bold text-xs text-amber-900 tracking-wider">
             JEEP ADVENTURE EXPERIENCE • YOGYAKARTA
@@ -51,7 +187,7 @@ export default function HeroSection({ onOpenBooking }: HeroSectionProps) {
         </p>
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto mb-16">
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto mb-12">
           <button
             onClick={() => onOpenBooking ? onOpenBooking() : document.getElementById('paket-wisata')?.scrollIntoView({ behavior: 'smooth' })}
             className="amber-gradient-btn w-full sm:w-auto px-8 py-4 rounded-xl font-space font-bold text-sm text-slate-950 shadow-lg shadow-amber-500/25 flex items-center justify-center gap-2.5 group cursor-pointer"
@@ -68,16 +204,41 @@ export default function HeroSection({ onOpenBooking }: HeroSectionProps) {
           </a>
         </div>
 
+        {/* Slideshow Dot Indicators (Maksimal 5) */}
+        {slides.length > 1 && (
+          <div className="flex items-center gap-2.5 mb-8 bg-white/70 backdrop-blur-md px-4 py-2 rounded-full border border-slate-200/60 shadow-sm">
+            {slides.map((slide, idx) => {
+              const isActive = idx === currentIndex;
+              return (
+                <button
+                  key={slide.id || idx}
+                  onClick={() => goToSlide(idx)}
+                  aria-label={`Buka slide ${idx + 1}`}
+                  className={`transition-all duration-300 rounded-full cursor-pointer ${
+                    isActive
+                      ? 'w-7 h-2.5 bg-gradient-to-r from-orange-500 to-amber-500 shadow-sm'
+                      : 'w-2.5 h-2.5 bg-slate-300 hover:bg-slate-400'
+                  }`}
+                  title={slide.title || `Slide ${idx + 1}`}
+                />
+              );
+            })}
+            <span className="font-space font-bold text-[10px] text-slate-500 ml-1.5 border-l border-slate-300 pl-2">
+              {currentIndex + 1} / {slides.length}
+            </span>
+          </div>
+        )}
+
         {/* Scroll Indicator */}
         <a
           href="#tentang"
-          className="inline-flex flex-col items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors group cursor-pointer"
+          className="inline-flex flex-col items-center gap-1.5 text-slate-500 hover:text-slate-900 transition-colors group cursor-pointer"
         >
-          <span className="font-space font-semibold text-xs tracking-widest text-slate-500 group-hover:text-slate-800 uppercase">
+          <span className="font-space font-semibold text-[11px] tracking-widest text-slate-500 group-hover:text-slate-800 uppercase">
             GULIR EKSPLORASI
           </span>
-          <div className="w-8 h-8 rounded-full bg-white/90 border border-slate-200 flex items-center justify-center shadow-xs group-hover:translate-y-1 transition-transform">
-            <ChevronDown className="w-4 h-4 text-slate-600" />
+          <div className="w-7 h-7 rounded-full bg-white/90 border border-slate-200 flex items-center justify-center shadow-xs group-hover:translate-y-1 transition-transform">
+            <ChevronDown className="w-3.5 h-3.5 text-slate-600" />
           </div>
         </a>
       </div>

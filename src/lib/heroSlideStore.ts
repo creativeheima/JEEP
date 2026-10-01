@@ -1,0 +1,209 @@
+import fs from 'fs';
+import path from 'path';
+import { HeroSlide, MAX_HERO_SLIDES } from '@/types/heroSlide';
+import { supabase, isSupabaseConfigured } from './supabase';
+
+const DATA_DIR = path.join(process.cwd(), 'data');
+const DATA_FILE = path.join(DATA_DIR, 'hero_slides.json');
+
+const INITIAL_HERO_SLIDES: HeroSlide[] = [
+  {
+    id: 'slide-1',
+    imageUrl: '/images/img_1_6_merapi_jeep_adventure_golden_hour_experience.png',
+    title: 'Golden Sunrise Merapi Experience',
+    order: 1,
+    createdAt: new Date(Date.now() - 50000).toISOString(),
+  },
+  {
+    id: 'slide-2',
+    imageUrl: '/images/img_1_53_jeep_cruising_through_volcanic_off-road_track_mount_merapi.png',
+    title: 'Ekspedisi Jalur Vulkanik & Lava Track',
+    order: 2,
+    createdAt: new Date(Date.now() - 40000).toISOString(),
+  },
+  {
+    id: 'slide-3',
+    imageUrl: '/images/img_1_193_paket_medium_kali_kuning_splashing_water.png',
+    title: 'Sensasi Manuver Basah Kali Kuning',
+    order: 3,
+    createdAt: new Date(Date.now() - 30000).toISOString(),
+  },
+  {
+    id: 'slide-4',
+    imageUrl: '/images/img_1_372_bunker_kaliadem.png',
+    title: 'Pesona Bersejarah Bunker Kaliadem',
+    order: 4,
+    createdAt: new Date(Date.now() - 20000).toISOString(),
+  },
+  {
+    id: 'slide-5',
+    imageUrl: '/images/img_1_443_travelers_smiling_in_4x4_jeep_with_mount_merapi_in_the_background.png',
+    title: 'Momen Bahagia Wisatawan & Keluarga',
+    order: 5,
+    createdAt: new Date(Date.now() - 10000).toISOString(),
+  },
+];
+
+function ensureDirectory() {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+}
+
+function toDatabaseRow(slide: HeroSlide) {
+  return {
+    id: slide.id,
+    image_url: slide.imageUrl,
+    title: slide.title,
+    order_index: slide.order,
+    created_at: slide.createdAt,
+  };
+}
+
+function fromDatabaseRow(row: Record<string, any>): HeroSlide {
+  return {
+    id: String(row.id),
+    imageUrl: String(row.image_url),
+    title: String(row.title || ''),
+    order: Number(row.order_index) || 1,
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+  };
+}
+
+export function getLocalHeroSlides(): HeroSlide[] {
+  ensureDirectory();
+  if (!fs.existsSync(DATA_FILE)) {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(INITIAL_HERO_SLIDES, null, 2), 'utf8');
+    return INITIAL_HERO_SLIDES;
+  }
+  try {
+    const raw = fs.readFileSync(DATA_FILE, 'utf8');
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_HERO_SLIDES;
+  } catch {
+    return INITIAL_HERO_SLIDES;
+  }
+}
+
+export function saveLocalHeroSlides(slides: HeroSlide[]) {
+  ensureDirectory();
+  fs.writeFileSync(DATA_FILE, JSON.stringify(slides.slice(0, MAX_HERO_SLIDES), null, 2), 'utf8');
+}
+
+export async function fetchAllHeroSlides(): Promise<HeroSlide[]> {
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('hero_slides')
+        .select('*')
+        .order('order_index', { ascending: true })
+        .limit(MAX_HERO_SLIDES);
+
+      if (!error && data && data.length > 0) {
+        return data.map(fromDatabaseRow);
+      }
+    } catch (err) {
+      console.error('Supabase hero_slides fetch error, using local fallback:', err);
+    }
+  }
+  return getLocalHeroSlides().sort((a, b) => a.order - b.order).slice(0, MAX_HERO_SLIDES);
+}
+
+export async function insertHeroSlide(slide: Omit<HeroSlide, 'id' | 'createdAt' | 'order'>): Promise<{ success: boolean; data?: HeroSlide; error?: string }> {
+  const currentSlides = await fetchAllHeroSlides();
+  if (currentSlides.length >= MAX_HERO_SLIDES) {
+    return {
+      success: false,
+      error: `Maksimal foto beranda adalah ${MAX_HERO_SLIDES} foto. Hapus salah satu foto terlebih dahulu untuk menambah baru.`
+    };
+  }
+
+  const newSlide: HeroSlide = {
+    id: 'slide-' + Date.now(),
+    imageUrl: slide.imageUrl.trim(),
+    title: (slide.title || 'Slide Beranda').trim(),
+    order: currentSlides.length + 1,
+    createdAt: new Date().toISOString(),
+  };
+
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const row = toDatabaseRow(newSlide);
+      const { data, error } = await supabase
+        .from('hero_slides')
+        .insert([row])
+        .select()
+        .single();
+
+      if (!error && data) {
+        const local = getLocalHeroSlides();
+        local.push(newSlide);
+        saveLocalHeroSlides(local);
+        return { success: true, data: fromDatabaseRow(data) };
+      }
+    } catch (err) {
+      console.error('Supabase insert hero slide error:', err);
+    }
+  }
+
+  const local = getLocalHeroSlides();
+  local.push(newSlide);
+  saveLocalHeroSlides(local);
+  return { success: true, data: newSlide };
+}
+
+export async function deleteHeroSlide(id: string): Promise<boolean> {
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const { error } = await supabase
+        .from('hero_slides')
+        .delete()
+        .eq('id', id);
+
+      if (!error) {
+        let local = getLocalHeroSlides();
+        local = local.filter(s => s.id !== id);
+        saveLocalHeroSlides(local);
+        return true;
+      }
+    } catch (err) {
+      console.error('Supabase hero slide delete error:', err);
+    }
+  }
+
+  let local = getLocalHeroSlides();
+  const initLen = local.length;
+  local = local.filter(s => s.id !== id);
+  if (local.length === initLen) return false;
+  saveLocalHeroSlides(local);
+  return true;
+}
+
+export async function reorderHeroSlides(reorderedIds: string[]): Promise<boolean> {
+  const local = getLocalHeroSlides();
+  const updated: HeroSlide[] = [];
+
+  reorderedIds.forEach((id, index) => {
+    const item = local.find(s => s.id === id);
+    if (item) {
+      updated.push({ ...item, order: index + 1 });
+    }
+  });
+
+  saveLocalHeroSlides(updated);
+
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      for (const item of updated) {
+        await supabase
+          .from('hero_slides')
+          .update({ order_index: item.order })
+          .eq('id', item.id);
+      }
+    } catch (err) {
+      console.error('Supabase reorder exception:', err);
+    }
+  }
+
+  return true;
+}
