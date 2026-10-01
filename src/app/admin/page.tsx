@@ -922,59 +922,6 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            {/* Quick Actions & Navigation Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div
-                onClick={() => setActiveTab('manual')}
-                className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-amber-400 shadow-xs hover:shadow-md transition-all cursor-pointer flex items-center gap-4 group"
-              >
-                <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
-                  <PlusCircle className="w-6 h-6" />
-                </div>
-                <div>
-                  <h4 className="font-outfit font-bold text-sm text-slate-900">
-                    Input Kasir / Booking Manual
-                  </h4>
-                  <p className="font-work text-xs text-slate-500 mt-0.5">
-                    Catat tamu via WhatsApp atau walk-in langsung.
-                  </p>
-                </div>
-              </div>
-
-              <div
-                onClick={() => setActiveTab('gallery')}
-                className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-purple-400 shadow-xs hover:shadow-md transition-all cursor-pointer flex items-center gap-4 group"
-              >
-                <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
-                  <Camera className="w-6 h-6" />
-                </div>
-                <div>
-                  <h4 className="font-outfit font-bold text-sm text-slate-900">
-                    Kelola Galeri & Video IG
-                  </h4>
-                  <p className="font-work text-xs text-slate-500 mt-0.5">
-                    {galleryItems.length} media aktif di website.
-                  </p>
-                </div>
-              </div>
-
-              <div
-                onClick={() => setActiveTab('hero')}
-                className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-amber-400 shadow-xs hover:shadow-md transition-all cursor-pointer flex items-center gap-4 group"
-              >
-                <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
-                  <Sliders className="w-6 h-6" />
-                </div>
-                <div>
-                  <h4 className="font-outfit font-bold text-sm text-slate-900">
-                    Slideshow Beranda
-                  </h4>
-                  <p className="font-work text-xs text-slate-500 mt-0.5">
-                    {heroSlides.length} / {MAX_HERO_SLIDES} foto aktif.
-                  </p>
-                </div>
-              </div>
-            </div>
 
             {/* Recent Confirmed Bookings Table Preview */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-7 space-y-4">
