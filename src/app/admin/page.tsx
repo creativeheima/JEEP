@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import {
   Car,
   PlusCircle,
+  Plus,
   Search,
   CheckCircle2,
   Clock,
@@ -54,7 +55,7 @@ export default function AdminDashboardPage() {
   const [search, setSearch] = useState('');
   
   // Navigation active tab: 'dashboard' is the default overview
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'pending' | 'approved' | 'settled' | 'manual' | 'gallery' | 'hero'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'pending' | 'approved' | 'settled' | 'gallery' | 'hero'>('dashboard');
 
   // Hero Slideshow States (Max 5 photos)
   const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([]);
@@ -84,7 +85,8 @@ export default function AdminDashboardPage() {
   const [dealJeepNumber, setDealJeepNumber] = useState('AB 1928 MJ');
   const [approvingLoading, setApprovingLoading] = useState(false);
 
-  // Manual Input Form states
+  // Manual Input Modal & Form states
+  const [showManualModal, setShowManualModal] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [paxCount, setPaxCount] = useState(4);
@@ -242,6 +244,7 @@ export default function AdminDashboardPage() {
       const json = await res.json();
       if (json.success && json.data) {
         setSuccessBooking(json.data);
+        setShowManualModal(false);
         fetchBookings();
         setCustomerName('');
         setCustomerPhone('');
@@ -251,6 +254,8 @@ export default function AdminDashboardPage() {
         } else {
           setActiveTab('approved');
         }
+      } else {
+        alert('Gagal membuat booking: ' + (json.error || 'Terjadi kesalahan sistem'));
       }
     } catch (err) {
       console.error(err);
@@ -525,12 +530,6 @@ export default function AdminDashboardPage() {
       icon: CheckCheck,
       count: settledLunasBookings.length,
       badgeColor: 'bg-emerald-100 text-emerald-800 font-bold',
-    },
-    {
-      id: 'manual' as const,
-      label: 'Input Booking Kasir',
-      sublabel: 'Direct Chat WA / Offline',
-      icon: PlusCircle,
     },
   ];
 
@@ -825,7 +824,6 @@ export default function AdminDashboardPage() {
                 {activeTab === 'pending' && 'Permintaan Masuk'}
                 {activeTab === 'approved' && 'Jadwal Tur Aktif (DP)'}
                 {activeTab === 'settled' && 'Riwayat Selesai & Lunas'}
-                {activeTab === 'manual' && 'Input Booking Kasir'}
                 {activeTab === 'gallery' && 'Kelola Galeri & IG'}
                 {activeTab === 'hero' && 'Slideshow Beranda'}
               </span>
@@ -835,13 +833,21 @@ export default function AdminDashboardPage() {
               {activeTab === 'pending' && 'Permintaan Masuk dari Tamu Website'}
               {activeTab === 'approved' && 'Jadwal Tur Aktif (Menunggu Pelunasan)'}
               {activeTab === 'settled' && 'Riwayat & Arsip Booking Lunas (Selesai 100%)'}
-              {activeTab === 'manual' && 'Input Manual Booking (Chat WA / Kasir)'}
               {activeTab === 'gallery' && 'Kelola Galeri & Video Reels Instagram'}
               {activeTab === 'hero' && 'Kelola Foto Slideshow Beranda'}
             </h1>
           </div>
 
-          <div className="flex items-center gap-2.5 self-start sm:self-auto">
+          <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
+            <button
+              type="button"
+              onClick={() => setShowManualModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-space font-bold shadow-xs hover:shadow transition-all cursor-pointer"
+            >
+              <PlusCircle className="w-4 h-4 shrink-0" />
+              <span>+ Booking Manual</span>
+            </button>
+
             <button
               onClick={fetchBookings}
               className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-xs font-space font-semibold text-slate-700 shadow-xs transition-colors cursor-pointer"
@@ -853,7 +859,7 @@ export default function AdminDashboardPage() {
             <Link
               href="/"
               target="_blank"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-xs font-space font-bold text-slate-950 shadow-xs transition-colors"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-space font-bold text-white shadow-xs transition-colors"
             >
               <Eye className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Lihat Web</span>
@@ -1105,112 +1111,183 @@ export default function AdminDashboardPage() {
         {/* TAB 1: PERMINTAAN BOOKING DARI CLIENT (MENUNGGU APPROVAL) */}
         {/* ============================================================== */}
         {activeTab === 'pending' && (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-7 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 sm:p-7 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
               <div>
-                <h3 className="font-outfit font-black text-xl text-slate-900 flex flex-wrap items-center gap-2">
+                <h3 className="font-outfit font-black text-xl text-slate-900 flex flex-wrap items-center gap-2.5">
                   <span>Permintaan Masuk dari Tamu Website</span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-space font-bold border border-amber-200">
+                  <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-space font-bold border border-amber-200 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                     {pendingBookings.length} Menunggu Konfirmasi
                   </span>
                 </h3>
-                <p className="font-work text-xs text-slate-500 mt-1">
-                  Data yang diisi oleh client di website langsung muncul di sini. Klik tombol <strong>"Review & Approve Deal"</strong> untuk mengisi harga deal & menerbitkan tiket.
+                <p className="font-work text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
+                  Data yang diisi oleh calon tamu langsung dari formulir website. Klik tombol <strong className="text-slate-700">"Review & Approve Deal"</strong> untuk menentukan harga kesepakatan final, nominal DP, dan menerbitkan tiket resmi.
                 </p>
               </div>
 
-              <button
-                onClick={fetchBookings}
-                className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors shrink-0 self-start sm:self-auto cursor-pointer"
-                title="Refresh Data"
-              >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-amber-500' : ''}`} />
-              </button>
+              <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setShowManualModal(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-space font-bold text-xs shadow-xs hover:shadow transition-all cursor-pointer"
+                >
+                  <PlusCircle className="w-4 h-4 shrink-0" />
+                  <span>+ Booking Manual</span>
+                </button>
+
+                <button
+                  onClick={fetchBookings}
+                  className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors cursor-pointer"
+                  title="Segarkan Data"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-amber-500' : ''}`} />
+                </button>
+              </div>
             </div>
 
             {pendingBookings.length === 0 ? (
-              <div className="py-16 text-center text-slate-500 space-y-2">
-                <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto opacity-70" />
-                <p className="font-outfit font-bold text-base text-slate-800">
-                  Semua permintaan booking telah disetujui!
-                </p>
-                <p className="font-work text-xs text-slate-400">
-                  Tidak ada permintaan reservasi yang tertunda saat ini.
-                </p>
+              <div className="py-16 text-center text-slate-500 space-y-3 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center mx-auto shadow-xs">
+                  <CheckCircle2 className="w-7 h-7" />
+                </div>
+                <div className="space-y-1">
+                  <p className="font-outfit font-bold text-lg text-slate-800">
+                    Semua Permintaan Booking Selesai Dikonfirmasi!
+                  </p>
+                  <p className="font-work text-xs text-slate-400 max-w-md mx-auto">
+                    Tidak ada permintaan reservasi yang tertunda saat ini. Anda dapat mencatat pesanan tamu baru yang datang langsung atau via WhatsApp menggunakan tombol di bawah.
+                  </p>
+                </div>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowManualModal(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-space font-bold text-xs shadow-xs transition-all cursor-pointer hover:shadow"
+                  >
+                    <PlusCircle className="w-4 h-4" />
+                    <span>+ Input Booking Manual</span>
+                  </button>
+                </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {pendingBookings.map((b) => (
                   <div
                     key={b.id}
-                    className="p-5 rounded-2xl bg-white border-2 border-amber-200/80 hover:border-amber-400 shadow-xs hover:shadow-md transition-all space-y-4"
+                    className="rounded-2xl bg-white border border-slate-200 hover:border-amber-400 shadow-xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group"
                   >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
+                    {/* Top Header Strip */}
+                    <div className="px-5 py-3.5 bg-gradient-to-r from-amber-50/70 via-slate-50/80 to-white border-b border-slate-100 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-amber-700 text-xs bg-amber-50 px-2.5 py-0.5 rounded border border-amber-200">
+                        <span className="font-mono font-bold text-amber-800 text-xs bg-amber-100/80 px-2.5 py-0.5 rounded-md border border-amber-300/80">
                           {b.bookingCode}
                         </span>
-                        <span className="text-[11px] font-space text-slate-400">
-                          {new Date(b.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB
-                        </span>
+                        <div className="flex items-center gap-1 text-[11px] font-space text-slate-400">
+                          <Clock className="w-3 h-3 text-slate-400" />
+                          <span>{new Date(b.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB</span>
+                        </div>
                       </div>
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-space font-bold uppercase bg-amber-100 text-amber-800 border border-amber-200">
-                        PENDING APPROVAL
+
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-space font-bold uppercase bg-amber-100 text-amber-900 border border-amber-300">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                        <span>Menunggu Approval</span>
                       </span>
                     </div>
 
-                    {/* Customer Info */}
-                    <div className="space-y-1">
-                      <h4 className="font-outfit font-black text-lg text-slate-900">
-                        {b.customerName}
-                      </h4>
-                      <div className="flex items-center gap-2 text-xs font-mono text-slate-600">
-                        <Phone className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>{b.customerPhone}</span>
+                    {/* Card Body */}
+                    <div className="p-5 space-y-4 flex-1">
+                      {/* Customer Info */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-11 h-11 rounded-xl bg-amber-100/70 border border-amber-200 flex items-center justify-center font-outfit font-black text-amber-800 text-base shrink-0">
+                            {b.customerName ? b.customerName.charAt(0).toUpperCase() : 'T'}
+                          </div>
+                          <div>
+                            <h4 className="font-outfit font-black text-lg text-slate-900 leading-snug">
+                              {b.customerName}
+                            </h4>
+                            <div className="flex items-center gap-2 mt-1">
+                              <a
+                                href={`https://wa.me/${b.customerPhone.replace(/^0/, '62').replace(/[^0-9]/g, '')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200 transition-colors"
+                                title="Klik untuk chat WhatsApp"
+                              >
+                                <Phone className="w-3 h-3 text-emerald-600" />
+                                <span>{b.customerPhone}</span>
+                              </a>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Trip details requested */}
-                    <div className="grid grid-cols-2 gap-2 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                      <div>
-                        <span className="text-[10px] font-space text-slate-500 uppercase block">Paket Pilihan</span>
-                        <span className="font-bold text-slate-800">{b.packageName}</span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-space text-slate-500 uppercase block">Jadwal Tur</span>
-                        <span className="font-bold text-slate-800">{b.tourDate} ({b.tourTime})</span>
-                      </div>
-                      <div className="mt-1">
-                        <span className="text-[10px] font-space text-slate-500 uppercase block">Peserta</span>
-                        <span className="font-bold text-slate-800">{b.paxCount} Orang</span>
-                      </div>
-                      <div className="mt-1">
-                        <span className="text-[10px] font-space text-slate-500 uppercase block">Estimasi Jeep</span>
-                        <span className="font-bold text-amber-700">{b.jeepCount} Unit</span>
-                      </div>
-                    </div>
+                      {/* Trip Details Grid */}
+                      <div className="grid grid-cols-2 gap-2.5 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs">
+                        <div className="space-y-0.5">
+                          <span className="text-[10px] font-space font-semibold uppercase tracking-wider text-slate-400 block">
+                            Paket Pilihan
+                          </span>
+                          <span className="font-bold text-slate-800 block truncate" title={b.packageName}>
+                            {b.packageName}
+                          </span>
+                        </div>
 
-                    {b.notes && (
-                      <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 text-[11px] italic">
-                        "{b.notes}"
+                        <div className="space-y-0.5">
+                          <span className="text-[10px] font-space font-semibold uppercase tracking-wider text-slate-400 block">
+                            Jadwal Tur
+                          </span>
+                          <span className="font-bold text-slate-800 block truncate">
+                            {b.tourDate} <span className="text-amber-700 font-semibold">({b.tourTime})</span>
+                          </span>
+                        </div>
+
+                        <div className="space-y-0.5 pt-2 border-t border-slate-200/70">
+                          <span className="text-[10px] font-space font-semibold uppercase tracking-wider text-slate-400 block">
+                            Jumlah Peserta
+                          </span>
+                          <span className="font-bold text-slate-800">
+                            {b.paxCount} Orang
+                          </span>
+                        </div>
+
+                        <div className="space-y-0.5 pt-2 border-t border-slate-200/70">
+                          <span className="text-[10px] font-space font-semibold uppercase tracking-wider text-slate-400 block">
+                            Estimasi Armada
+                          </span>
+                          <span className="font-bold text-amber-800 bg-amber-100/90 px-2 py-0.5 rounded border border-amber-200 text-[11px] inline-block">
+                            {b.jeepCount} Unit Jeep
+                          </span>
+                        </div>
                       </div>
-                    )}
+
+                      {/* Notes from guest */}
+                      {b.notes && (
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-600 text-xs flex items-start gap-2">
+                          <span className="text-amber-500 font-bold shrink-0 text-base leading-none">“</span>
+                          <p className="italic leading-relaxed text-[11px] text-slate-600">
+                            {b.notes}
+                          </p>
+                        </div>
+                      )}
+                    </div>
 
                     {/* Action buttons */}
-                    <div className="pt-2 flex items-center gap-2">
+                    <div className="px-5 py-3.5 bg-slate-50/60 border-t border-slate-100 flex items-center gap-2">
                       <button
                         onClick={() => handleOpenApproveModal(b)}
-                        className="flex-1 py-2.5 px-3 rounded-xl font-space font-bold text-xs bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
+                        className="flex-1 py-2.5 px-3 rounded-xl font-space font-bold text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center justify-center gap-2 shadow-xs hover:shadow transition-all cursor-pointer"
                       >
                         <CheckSquare className="w-4 h-4 shrink-0" />
-                        <span>REVIEW & APPROVE</span>
+                        <span>REVIEW & APPROVE DEAL</span>
                       </button>
 
                       <a
                         href={`https://wa.me/${b.customerPhone.replace(/^0/, '62').replace(/[^0-9]/g, '')}?text=Halo%20Kak%20${encodeURIComponent(b.customerName)},%20kami%20dari%20Merapi%20Jeep%20Adventure%20melihat%20reservasi%20Kakak%20untuk%20${encodeURIComponent(b.packageName)}%20di%20tanggal%20${b.tourDate}.%20Boleh%20kami%20bantu%20konfirmasi%20kesepakatan%20harga%20dan%20DP?`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors"
+                        className="p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors shrink-0"
                         title="Chat WA Pelanggan"
                       >
                         <Phone className="w-4 h-4" />
@@ -1218,7 +1295,7 @@ export default function AdminDashboardPage() {
 
                       <button
                         onClick={() => handleDelete(b.id)}
-                        className="p-2.5 rounded-xl bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-600 border border-slate-200 transition-colors cursor-pointer"
+                        className="p-2.5 rounded-xl bg-white hover:bg-red-50 text-slate-400 hover:text-red-600 border border-slate-200 hover:border-red-200 transition-colors shrink-0 cursor-pointer"
                         title="Tolak / Hapus"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -1568,113 +1645,7 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* ============================================================== */}
-        {/* TAB 3: INPUT MANUAL (DIRECT CHAT WA / KASIR) */}
-        {/* ============================================================== */}
-        {activeTab === 'manual' && (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-7 space-y-6">
-            <div className="pb-4 border-b border-slate-100">
-              <h3 className="font-outfit font-black text-xl text-slate-900">
-                Input Manual Booking Hasil Chat WA Langsung
-              </h3>
-              <p className="font-work text-xs text-slate-500 mt-0.5">
-                Gunakan menu ini jika pelanggan mengontak WhatsApp secara langsung tanpa melalui form di website.
-              </p>
-            </div>
 
-            <form onSubmit={handleCreateManualBooking} className="space-y-4 font-work text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="font-space font-bold text-slate-700 block mb-1">Nama Tamu *</label>
-                  <input
-                    type="text"
-                    required
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    placeholder="Contoh: Bpk. Budi Santoso"
-                    className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-800 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="font-space font-bold text-slate-700 block mb-1">No WhatsApp *</label>
-                  <input
-                    type="tel"
-                    required
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    placeholder="08123456789"
-                    className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-800 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="font-space font-bold text-slate-700 block mb-1">Paket Wisata</label>
-                  <select
-                    value={packageName}
-                    onChange={(e) => setPackageName(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-800 focus:border-amber-500 outline-none"
-                  >
-                    <option value="Paket Short">Paket Short</option>
-                    <option value="Paket Medium (Best Seller)">Paket Medium (Best Seller)</option>
-                    <option value="Paket Long">Paket Long</option>
-                    <option value="Paket Sunrise">Paket Sunrise</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                <div>
-                  <label className="font-space font-bold text-slate-700 block mb-1">Tanggal</label>
-                  <input
-                    type="date"
-                    required
-                    value={tourDate}
-                    onChange={(e) => setTourDate(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-800 focus:border-amber-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="font-space font-bold text-slate-700 block mb-1">Jam</label>
-                  <input
-                    type="text"
-                    value={tourTime}
-                    onChange={(e) => setTourTime(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-800 focus:border-amber-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="font-space font-bold text-amber-700 block mb-1">Total Deal (Rp) *</label>
-                  <input
-                    type="number"
-                    required
-                    value={totalAmount}
-                    onChange={(e) => setTotalAmount(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-mono font-bold focus:border-amber-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="font-space font-bold text-emerald-700 block mb-1">DP Masuk (Rp) *</label>
-                  <input
-                    type="number"
-                    required
-                    value={dpAmount}
-                    onChange={(e) => setDpAmount(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-emerald-700 font-mono font-bold focus:border-amber-500 outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={submittingManual}
-                  className="px-6 py-2.5 rounded-xl font-space font-bold text-xs bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-xs cursor-pointer transition-colors"
-                >
-                  {submittingManual ? 'Menyimpan...' : '✓ SIMPAN & TERBITKAN TIKET'}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
 
         {/* ============================================================== */}
         {/* TAB 4: KELOLA GALERI & VIDEO INSTAGRAM */}
@@ -2051,6 +2022,242 @@ export default function AdminDashboardPage() {
         )}
 
       </main>
+
+      {/* ============================================================== */}
+      {/* MODAL INPUT BOOKING MANUAL (KASIR / WA DIRECT) */}
+      {/* ============================================================== */}
+      {showManualModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="relative bg-white border border-slate-200 rounded-2xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl space-y-5 my-8 text-slate-800 max-h-[92vh] overflow-y-auto">
+            
+            <button
+              type="button"
+              onClick={() => setShowManualModal(false)}
+              className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 text-xs font-space font-bold uppercase mb-1">
+                <PlusCircle className="w-3.5 h-3.5 text-amber-700" />
+                <span>PENCATATAN MANUAL KASIR</span>
+              </div>
+              <h3 className="font-outfit font-black text-2xl text-slate-900">
+                Input Booking Manual (Offline / WA Direct)
+              </h3>
+              <p className="font-work text-xs text-slate-500 mt-0.5">
+                Gunakan formulir ini jika pelanggan menghubungi langsung via WhatsApp atau datang langsung ke basecamp.
+              </p>
+            </div>
+
+            <form onSubmit={handleCreateManualBooking} className="space-y-4 font-work text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="font-space font-bold text-slate-700 block mb-1">Nama Tamu / Rombongan *</label>
+                  <input
+                    type="text"
+                    required
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    placeholder="Contoh: Bpk. Budi Santoso & Keluarga"
+                    className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="font-space font-bold text-slate-700 block mb-1">No WhatsApp Tamu *</label>
+                  <input
+                    type="tel"
+                    required
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    placeholder="Contoh: 081234567890"
+                    className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="font-space font-bold text-slate-700 block mb-1">Paket Wisata</label>
+                  <select
+                    value={packageName}
+                    onChange={(e) => setPackageName(e.target.value)}
+                    className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-amber-500 outline-none"
+                  >
+                    <option value="Paket Short">Paket Short</option>
+                    <option value="Paket Medium (Best Seller)">Paket Medium (Best Seller)</option>
+                    <option value="Paket Long">Paket Long</option>
+                    <option value="Paket Sunrise">Paket Sunrise</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="font-space font-bold text-slate-700 block mb-1">Jumlah Peserta (Pax)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={paxCount}
+                    onChange={(e) => setPaxCount(Number(e.target.value))}
+                    className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-amber-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="font-space font-bold text-slate-700 block mb-1">Jumlah Armada Jeep</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={jeepCount}
+                    onChange={(e) => setJeepCount(Number(e.target.value))}
+                    className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-amber-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="font-space font-bold text-slate-700 block mb-1">Tanggal Tur *</label>
+                  <input
+                    type="date"
+                    required
+                    value={tourDate}
+                    onChange={(e) => setTourDate(e.target.value)}
+                    className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-amber-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="font-space font-bold text-slate-700 block mb-1">Jam Keberangkatan</label>
+                  <input
+                    type="text"
+                    value={tourTime}
+                    onChange={(e) => setTourTime(e.target.value)}
+                    placeholder="Contoh: 09:00 WIB"
+                    className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-amber-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-amber-50/60 border border-amber-200/80 space-y-3">
+                <span className="font-space font-bold text-xs uppercase tracking-wider text-amber-900 block">
+                  Biaya Kesepakatan & Pembayaran
+                </span>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="font-space font-bold text-slate-700 block mb-1">
+                      Total Deal Harga (Rp) *
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min={0}
+                      value={totalAmount}
+                      onChange={(e) => setTotalAmount(e.target.value)}
+                      className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-mono font-bold focus:border-amber-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-space font-bold text-emerald-700 block mb-1">
+                      DP Masuk / Dibayar (Rp) *
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min={0}
+                      value={dpAmount}
+                      onChange={(e) => setDpAmount(e.target.value)}
+                      className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-emerald-700 font-mono font-bold focus:border-amber-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-xs pt-1 px-1">
+                  <span className="text-slate-600 font-medium">Sisa Pelunasan di Basecamp:</span>
+                  <span className="font-mono font-bold text-sm text-red-600">
+                    Rp {Math.max(0, (Number(totalAmount) || 0) - (Number(dpAmount) || 0)).toLocaleString('id-ID')}
+                  </span>
+                </div>
+
+                {Number(dpAmount) >= Number(totalAmount) && Number(totalAmount) > 0 ? (
+                  <div className="p-2.5 rounded-lg bg-emerald-100/80 border border-emerald-300 text-emerald-800 text-[11px] font-space font-bold flex items-center gap-1.5">
+                    <CheckCheck className="w-4 h-4 text-emerald-700" />
+                    <span>Lunas 100% — Data otomatis akan langsung masuk ke tabel Riwayat Lunas.</span>
+                  </div>
+                ) : (
+                  <div className="p-2.5 rounded-lg bg-amber-100/80 border border-amber-300 text-amber-900 text-[11px] font-space font-bold flex items-center gap-1.5">
+                    <Ticket className="w-4 h-4 text-amber-700" />
+                    <span>DP Masuk — Data akan masuk ke Jadwal Tur Aktif untuk ditagih pelunasan di lokasi.</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="font-space font-bold text-slate-700 block mb-1">Metode Bayar DP</label>
+                  <select
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-amber-500 outline-none"
+                  >
+                    <option value="Transfer BCA">Transfer BCA</option>
+                    <option value="Transfer Mandiri">Transfer Mandiri</option>
+                    <option value="Transfer BRI">Transfer BRI</option>
+                    <option value="QRIS">QRIS</option>
+                    <option value="Tunai / Cash">Tunai / Cash di Basecamp</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="font-space font-bold text-slate-700 block mb-1">Driver Ditugaskan</label>
+                  <input
+                    type="text"
+                    value={driverName}
+                    onChange={(e) => setDriverName(e.target.value)}
+                    placeholder="Nama Driver"
+                    className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-amber-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="font-space font-bold text-slate-700 block mb-1">Nomor Plat Jeep</label>
+                  <input
+                    type="text"
+                    value={jeepNumber}
+                    onChange={(e) => setJeepNumber(e.target.value)}
+                    placeholder="Contoh: AB 1234 MJ"
+                    className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-amber-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-space font-bold text-slate-700 block mb-1">Catatan Tambahan (Opsional)</label>
+                <textarea
+                  rows={2}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Contoh: Tamu minta dijemput di Kaliurang, bawa kamera..."
+                  className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-amber-500 outline-none"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowManualModal(false)}
+                  className="px-5 py-2.5 rounded-xl font-space font-bold text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingManual}
+                  className="px-6 py-2.5 rounded-xl font-space font-bold text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-xs cursor-pointer transition-all hover:shadow"
+                >
+                  {submittingManual ? 'Menyimpan...' : '✓ SIMPAN & TERBITKAN TIKET'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* ============================================================== */}
       {/* APPROVAL MODAL (Light Clean Theme) */}
