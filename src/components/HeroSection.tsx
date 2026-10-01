@@ -10,7 +10,7 @@ interface HeroSectionProps {
 
 export default function HeroSection({ onOpenBooking }: HeroSectionProps) {
   return (
-    <section id="hero" className="relative min-h-[820px] flex items-center justify-center pt-24 pb-16 overflow-hidden bg-white">
+    <section id="hero" className="relative min-h-[820px] flex items-center justify-center pt-28 sm:pt-32 pb-16 overflow-hidden bg-white">
       {/* Background Watermark / Golden Hour Image with soft atmospheric fades */}
       <div className="absolute inset-0 z-0">
         <div className="relative w-full h-full">
