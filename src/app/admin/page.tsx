@@ -31,7 +31,9 @@ import {
   ArrowUpRight,
   ArrowRight,
   CheckCheck,
-  Archive
+  Archive,
+  Settings,
+  ChevronDown
 } from 'lucide-react';
 import { Booking } from '@/types/booking';
 import { GalleryItem, GalleryCategory } from '@/types/gallery';
@@ -44,6 +46,8 @@ export default function AdminDashboardPage() {
 
   // Mobile sidebar drawer state
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  // Settings dropdown in sidebar
+  const [isSettingsOpen, setIsSettingsOpen] = useState(true);
 
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -490,8 +494,8 @@ export default function AdminDashboardPage() {
 
   if (!isAuthenticated) return null;
 
-  // Sidebar navigation menu definition (Dashboard, Pending, Jadwal Aktif, Riwayat Lunas, Kasir, Galeri, Hero)
-  const menuItems = [
+  // Sidebar operational menu items definition
+  const operationalMenuItems = [
     {
       id: 'dashboard' as const,
       label: 'Dashboard',
@@ -528,26 +532,13 @@ export default function AdminDashboardPage() {
       sublabel: 'Direct Chat WA / Offline',
       icon: PlusCircle,
     },
-    {
-      id: 'gallery' as const,
-      label: 'Galeri & Video IG',
-      sublabel: 'Dokumentasi & Reels',
-      icon: Camera,
-      count: galleryItems.length,
-      badgeColor: 'bg-purple-100 text-purple-700 font-bold',
-    },
-    {
-      id: 'hero' as const,
-      label: 'Slideshow Beranda',
-      sublabel: 'Maksimal 5 Foto',
-      icon: Sliders,
-      countBadge: `${heroSlides.length}/${MAX_HERO_SLIDES}`,
-      badgeColor: heroSlides.length >= MAX_HERO_SLIDES ? 'bg-amber-100 text-amber-800 font-bold' : 'bg-slate-100 text-slate-700',
-    },
   ];
 
   const handleSelectTab = (tab: typeof activeTab) => {
     setActiveTab(tab);
+    if (tab === 'gallery' || tab === 'hero') {
+      setIsSettingsOpen(true);
+    }
     setIsMobileSidebarOpen(false); // Close mobile drawer when clicked
   };
 
@@ -657,14 +648,14 @@ export default function AdminDashboardPage() {
             Menu Operasional
           </div>
 
-          {menuItems.map((item) => {
+          {operationalMenuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => handleSelectTab(item.id)}
-                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-space text-xs font-semibold transition-all cursor-pointer text-left ${
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-space text-xs font-semibold transition-all cursor-pointer text-left ${
                   isActive
                     ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20 font-bold'
                     : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -688,14 +679,88 @@ export default function AdminDashboardPage() {
                     {item.count}
                   </span>
                 )}
-                {item.countBadge && (
-                  <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] shrink-0 font-mono font-bold ${item.badgeColor}`}>
-                    {item.countBadge}
-                  </span>
-                )}
               </button>
             );
           })}
+
+          {/* Group Dropdown: Settingan Website */}
+          <div className="pt-2">
+            <div className="px-3 py-1.5 text-[11px] font-space font-bold uppercase tracking-wider text-slate-400">
+              Pengaturan
+            </div>
+
+            {/* Dropdown Toggle Header */}
+            <button
+              type="button"
+              onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-space text-xs font-semibold transition-all cursor-pointer text-left ${
+                activeTab === 'gallery' || activeTab === 'hero'
+                  ? 'bg-amber-50 text-amber-900 font-bold border border-amber-200/80 shadow-xs'
+                  : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`p-1.5 rounded-lg ${activeTab === 'gallery' || activeTab === 'hero' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}`}>
+                  <Settings className="w-4 h-4 shrink-0" />
+                </div>
+                <div className="truncate">
+                  <span className="block truncate font-bold">Settingan Website</span>
+                  <span className="block text-[10px] truncate text-slate-400">
+                    Galeri & Slideshow
+                  </span>
+                </div>
+              </div>
+
+              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ${isSettingsOpen ? 'rotate-180 text-amber-700' : ''}`} />
+            </button>
+
+            {/* Dropdown Children (Galeri & Slideshow) */}
+            {isSettingsOpen && (
+              <div className="pl-3 pr-1 py-1 space-y-1 ml-5 border-l-2 border-slate-200 mt-1">
+                {/* Submenu 1: Galeri & Video IG */}
+                <button
+                  type="button"
+                  onClick={() => handleSelectTab('gallery')}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg font-space text-xs transition-all cursor-pointer text-left ${
+                    activeTab === 'gallery'
+                      ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <Camera className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">Galeri & Video IG</span>
+                  </div>
+                  <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                    activeTab === 'gallery' ? 'bg-amber-600 text-slate-950' : 'bg-purple-100 text-purple-700'
+                  }`}>
+                    {galleryItems.length}
+                  </span>
+                </button>
+
+                {/* Submenu 2: Slideshow Beranda */}
+                <button
+                  type="button"
+                  onClick={() => handleSelectTab('hero')}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg font-space text-xs transition-all cursor-pointer text-left ${
+                    activeTab === 'hero'
+                      ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <Sliders className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">Slideshow Beranda</span>
+                  </div>
+                  <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                    activeTab === 'hero' ? 'bg-amber-600 text-slate-950' : 'bg-amber-100 text-amber-800'
+                  }`}>
+                    {heroSlides.length}/{MAX_HERO_SLIDES}
+                  </span>
+                </button>
+              </div>
+            )}
+          </div>
 
           <div className="pt-4 px-3 py-1.5 text-[11px] font-space font-bold uppercase tracking-wider text-slate-400">
             Akses Publik
