@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { ArrowRight, ChevronDown, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { ArrowRight, ChevronDown } from 'lucide-react';
 import { HeroSlide } from '@/types/heroSlide';
 
 interface HeroSectionProps {
@@ -65,7 +65,7 @@ export default function HeroSection({ onOpenBooking }: HeroSectionProps) {
       .catch(err => console.error('Error fetching hero slides:', err));
   }, []);
 
-  // Auto-play slideshow every 6 seconds
+  // Auto-play slideshow every 6 seconds smoothly
   useEffect(() => {
     if (slides.length <= 1 || isPaused) return;
 
@@ -84,11 +84,7 @@ export default function HeroSection({ onOpenBooking }: HeroSectionProps) {
     setCurrentIndex((prev) => (prev - 1 + slides.length) % slides.length);
   };
 
-  const goToSlide = (index: number) => {
-    setCurrentIndex(index);
-  };
-
-  // Touch swipe support for mobile
+  // Touch swipe support for mobile gesture (optional swipe gesture remains active)
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
   };
@@ -112,7 +108,7 @@ export default function HeroSection({ onOpenBooking }: HeroSectionProps) {
       onTouchEnd={handleTouchEnd}
       className="relative min-h-[820px] lg:min-h-[860px] flex items-center justify-center pt-20 sm:pt-24 pb-16 overflow-hidden bg-white select-none"
     >
-      {/* Background Slideshow Layer */}
+      {/* Background Slideshow Layer (Clean Seamless Transition) */}
       <div className="absolute inset-0 z-0 overflow-hidden">
         {slides.map((slide, idx) => {
           const isActive = idx === currentIndex;
@@ -141,28 +137,6 @@ export default function HeroSection({ onOpenBooking }: HeroSectionProps) {
         <div className="absolute inset-0 z-20 bg-gradient-to-b from-white/90 via-transparent to-white pointer-events-none" />
       </div>
 
-      {/* Left Navigation Arrow */}
-      {slides.length > 1 && (
-        <button
-          onClick={prevSlide}
-          aria-label="Slide Sebelumnya"
-          className="absolute left-3 sm:left-6 lg:left-10 z-30 p-2.5 sm:p-3 rounded-full bg-white/80 hover:bg-white text-slate-800 hover:text-orange-600 shadow-lg shadow-slate-900/10 border border-slate-200/80 backdrop-blur-md transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer"
-        >
-          <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
-        </button>
-      )}
-
-      {/* Right Navigation Arrow */}
-      {slides.length > 1 && (
-        <button
-          onClick={nextSlide}
-          aria-label="Slide Berikutnya"
-          className="absolute right-3 sm:right-6 lg:right-10 z-30 p-2.5 sm:p-3 rounded-full bg-white/80 hover:bg-white text-slate-800 hover:text-orange-600 shadow-lg shadow-slate-900/10 border border-slate-200/80 backdrop-blur-md transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer"
-        >
-          <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
-        </button>
-      )}
-
       {/* Center Content Container */}
       <div className="relative z-20 max-w-5xl mx-auto px-4 sm:px-6 text-center flex flex-col items-center">
         {/* Top Badge with Active Slide Tag */}
@@ -187,7 +161,7 @@ export default function HeroSection({ onOpenBooking }: HeroSectionProps) {
         </p>
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto mb-12">
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto mb-14">
           <button
             onClick={() => onOpenBooking ? onOpenBooking() : document.getElementById('paket-wisata')?.scrollIntoView({ behavior: 'smooth' })}
             className="amber-gradient-btn w-full sm:w-auto px-8 py-4 rounded-xl font-space font-bold text-sm text-slate-950 shadow-lg shadow-amber-500/25 flex items-center justify-center gap-2.5 group cursor-pointer"
@@ -203,31 +177,6 @@ export default function HeroSection({ onOpenBooking }: HeroSectionProps) {
             JELAJAHI RUTE
           </a>
         </div>
-
-        {/* Slideshow Dot Indicators (Maksimal 5) */}
-        {slides.length > 1 && (
-          <div className="flex items-center gap-2.5 mb-8 bg-white/70 backdrop-blur-md px-4 py-2 rounded-full border border-slate-200/60 shadow-sm">
-            {slides.map((slide, idx) => {
-              const isActive = idx === currentIndex;
-              return (
-                <button
-                  key={slide.id || idx}
-                  onClick={() => goToSlide(idx)}
-                  aria-label={`Buka slide ${idx + 1}`}
-                  className={`transition-all duration-300 rounded-full cursor-pointer ${
-                    isActive
-                      ? 'w-7 h-2.5 bg-gradient-to-r from-orange-500 to-amber-500 shadow-sm'
-                      : 'w-2.5 h-2.5 bg-slate-300 hover:bg-slate-400'
-                  }`}
-                  title={slide.title || `Slide ${idx + 1}`}
-                />
-              );
-            })}
-            <span className="font-space font-bold text-[10px] text-slate-500 ml-1.5 border-l border-slate-300 pl-2">
-              {currentIndex + 1} / {slides.length}
-            </span>
-          </div>
-        )}
 
         {/* Scroll Indicator */}
         <a
