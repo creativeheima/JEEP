@@ -50,14 +50,12 @@ export default function Navbar({ onOpenBooking, onOpenCheckTicket }: NavbarProps
   ];
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 pt-3 sm:pt-4 px-3 sm:px-6 lg:px-8 transition-all duration-300 pointer-events-none">
-      <div
-        className={`max-w-7xl mx-auto bg-white rounded-2xl sm:rounded-3xl border border-slate-100 px-4 sm:px-7 py-2.5 sm:py-3 flex items-center justify-between pointer-events-auto transition-all duration-300 ${
-          isScrolled
-            ? 'shadow-xl shadow-slate-900/10 border-slate-200/80 bg-white/98 backdrop-blur-md'
-            : 'shadow-lg shadow-slate-200/60'
-        }`}
-      >
+    <header
+      className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 bg-white border-b border-slate-200/80 ${
+        isScrolled ? 'shadow-md py-3' : 'py-3.5 sm:py-4'
+      }`}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         {/* Brand Logo (Left) */}
         <Link href="#hero" className="flex items-center group shrink-0 py-0.5">
           <div className="relative h-10 sm:h-12 w-auto transition-transform duration-300 group-hover:scale-105">
@@ -179,7 +177,7 @@ export default function Navbar({ onOpenBooking, onOpenCheckTicket }: NavbarProps
 
       {/* Mobile Nav Dropdown */}
       {mobileMenuOpen && (
-        <div className="lg:hidden mt-2 max-w-7xl mx-auto bg-white/98 backdrop-blur-xl border border-slate-200 rounded-2xl px-6 py-5 shadow-2xl animate-in slide-in-from-top-2 duration-200 pointer-events-auto">
+        <div className="lg:hidden bg-white/98 backdrop-blur-xl border-b border-slate-200 px-6 py-5 shadow-2xl animate-in slide-in-from-top-2 duration-200">
           <div className="flex flex-col gap-2.5">
             {navLinks.map((link) => (
               <Link
