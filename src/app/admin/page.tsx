@@ -29,7 +29,9 @@ import {
   ShieldCheck,
   Sparkles,
   ArrowUpRight,
-  ArrowRight
+  ArrowRight,
+  CheckCheck,
+  Archive
 } from 'lucide-react';
 import { Booking } from '@/types/booking';
 import { GalleryItem, GalleryCategory } from '@/types/gallery';
@@ -48,7 +50,7 @@ export default function AdminDashboardPage() {
   const [search, setSearch] = useState('');
   
   // Navigation active tab: 'dashboard' is the default overview
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'pending' | 'approved' | 'manual' | 'gallery' | 'hero'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'pending' | 'approved' | 'settled' | 'manual' | 'gallery' | 'hero'>('dashboard');
 
   // Hero Slideshow States (Max 5 photos)
   const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([]);
@@ -126,9 +128,19 @@ export default function AdminDashboardPage() {
     }
   }, [search, isAuthenticated]);
 
-  // Filter bookings by status
+  // Filter bookings by status & payment status
   const pendingBookings = bookings.filter((b) => b.approvalStatus === 'PENDING');
   const approvedBookings = bookings.filter((b) => b.approvalStatus === 'APPROVED');
+
+  // 1. Jadwal Tur Aktif (Belum Lunas / Masih ada sisa yang harus dibayar di Basecamp)
+  const activeUnpaidBookings = approvedBookings.filter(
+    (b) => b.remainingAmount > 0 && b.paymentStatus !== 'LUNAS'
+  );
+
+  // 2. Riwayat Booking Selesai & LUNAS 100% (Dipisahkan agar tabel aktif tetap bersih!)
+  const settledLunasBookings = approvedBookings.filter(
+    (b) => b.remainingAmount === 0 || b.paymentStatus === 'LUNAS'
+  );
 
   // Open Approval Modal for a specific client booking
   const handleOpenApproveModal = (b: Booking) => {
@@ -171,7 +183,12 @@ export default function AdminDashboardPage() {
         setSuccessBooking(json.data);
         setApprovingBooking(null);
         fetchBookings();
-        setActiveTab('approved');
+        // If lunas, direct to settled, else approved active
+        if (rem === 0) {
+          setActiveTab('settled');
+        } else {
+          setActiveTab('approved');
+        }
       } else {
         alert('Gagal menyetujui booking: ' + (json.error || 'Terjadi kesalahan'));
       }
@@ -194,6 +211,7 @@ export default function AdminDashboardPage() {
     setSubmittingManual(true);
     const tot = Number(totalAmount) || 0;
     const dp = Number(dpAmount) || 0;
+    const rem = Math.max(0, tot - dp);
 
     try {
       const res = await fetch('/api/bookings', {
@@ -224,7 +242,11 @@ export default function AdminDashboardPage() {
         setCustomerName('');
         setCustomerPhone('');
         setNotes('');
-        setActiveTab('approved');
+        if (rem === 0) {
+          setActiveTab('settled');
+        } else {
+          setActiveTab('approved');
+        }
       }
     } catch (err) {
       console.error(err);
@@ -233,13 +255,14 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const handleMarkLunas = async (id: string) => {
-    if (!confirm('Tandai booking ini sebagai LUNAS?')) return;
+  // Mark Lunas -> Pindah ke tabel Riwayat Lunas
+  const handleMarkLunas = async (id: string, name: string) => {
+    if (!confirm(`Tandai booking atas nama "${name}" sebagai LUNAS?\n\nBooking ini akan otomatis dipindahkan ke tabel Riwayat Lunas agar daftar jadwal aktif tetap bersih.`)) return;
     try {
       const res = await fetch(`/api/bookings/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentStatus: 'LUNAS' }),
+        body: JSON.stringify({ paymentStatus: 'LUNAS', remainingAmount: 0 }),
       });
       const json = await res.json();
       if (json.success) {
@@ -467,7 +490,7 @@ export default function AdminDashboardPage() {
 
   if (!isAuthenticated) return null;
 
-  // Sidebar navigation menu definition (Dashboard tab is first!)
+  // Sidebar navigation menu definition (Dashboard, Pending, Jadwal Aktif, Riwayat Lunas, Kasir, Galeri, Hero)
   const menuItems = [
     {
       id: 'dashboard' as const,
@@ -485,11 +508,19 @@ export default function AdminDashboardPage() {
     },
     {
       id: 'approved' as const,
-      label: 'Tiket & Jadwal Aktif',
-      sublabel: 'Booking Terverifikasi',
-      icon: CheckCircle2,
-      count: approvedBookings.length,
-      badgeColor: 'bg-emerald-100 text-emerald-700 font-bold',
+      label: 'Jadwal Aktif (DP)',
+      sublabel: 'Perlu Pelunasan di Lokasi',
+      icon: Ticket,
+      count: activeUnpaidBookings.length,
+      badgeColor: activeUnpaidBookings.length > 0 ? 'bg-amber-100 text-amber-800 font-bold' : 'bg-slate-100 text-slate-600',
+    },
+    {
+      id: 'settled' as const,
+      label: 'Riwayat Selesai & Lunas',
+      sublabel: 'Arsip Lunas 100%',
+      icon: CheckCheck,
+      count: settledLunasBookings.length,
+      badgeColor: 'bg-emerald-100 text-emerald-800 font-bold',
     },
     {
       id: 'manual' as const,
@@ -623,7 +654,7 @@ export default function AdminDashboardPage() {
         {/* Middle: Menu Navigation Items */}
         <div className="flex-1 overflow-y-auto p-4 space-y-1.5">
           <div className="px-3 py-1.5 text-[11px] font-space font-bold uppercase tracking-wider text-slate-400">
-            Menu Utama
+            Menu Operasional
           </div>
 
           {menuItems.map((item) => {
@@ -727,7 +758,8 @@ export default function AdminDashboardPage() {
               <span className="font-bold text-amber-600">
                 {activeTab === 'dashboard' && 'Dashboard Utama'}
                 {activeTab === 'pending' && 'Permintaan Masuk'}
-                {activeTab === 'approved' && 'Tiket & Jadwal Aktif'}
+                {activeTab === 'approved' && 'Jadwal Tur Aktif (DP)'}
+                {activeTab === 'settled' && 'Riwayat Selesai & Lunas'}
                 {activeTab === 'manual' && 'Input Booking Kasir'}
                 {activeTab === 'gallery' && 'Kelola Galeri & IG'}
                 {activeTab === 'hero' && 'Slideshow Beranda'}
@@ -736,7 +768,8 @@ export default function AdminDashboardPage() {
             <h1 className="font-outfit font-black text-2xl sm:text-3xl text-slate-900 tracking-tight">
               {activeTab === 'dashboard' && 'Dashboard Ringkasan Operasional'}
               {activeTab === 'pending' && 'Permintaan Masuk dari Tamu Website'}
-              {activeTab === 'approved' && 'Daftar Booking Resmi Terverifikasi'}
+              {activeTab === 'approved' && 'Jadwal Tur Aktif (Menunggu Pelunasan)'}
+              {activeTab === 'settled' && 'Riwayat & Arsip Booking Lunas (Selesai 100%)'}
               {activeTab === 'manual' && 'Input Manual Booking (Chat WA / Kasir)'}
               {activeTab === 'gallery' && 'Kelola Galeri & Video Reels Instagram'}
               {activeTab === 'hero' && 'Kelola Foto Slideshow Beranda'}
@@ -869,69 +902,71 @@ export default function AdminDashboardPage() {
 
               <div
                 onClick={() => setActiveTab('approved')}
+                className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 hover:border-amber-300 shadow-xs hover:shadow-md transition-all cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-space text-[11px] font-bold text-amber-700 uppercase tracking-wider">
+                    Jadwal Aktif (DP)
+                  </span>
+                  <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center text-amber-700">
+                    <Ticket className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="font-outfit font-black text-2xl sm:text-3xl text-amber-600 mt-2">
+                  {activeUnpaidBookings.length}
+                </div>
+                <div className="text-[11px] font-work text-slate-500 mt-0.5">
+                  Perlu pelunasan di Basecamp
+                </div>
+              </div>
+
+              <div
+                onClick={() => setActiveTab('settled')}
                 className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 hover:border-emerald-300 shadow-xs hover:shadow-md transition-all cursor-pointer"
               >
                 <div className="flex items-center justify-between">
                   <span className="font-space text-[11px] font-bold text-emerald-700 uppercase tracking-wider">
-                    Ter-Approve
+                    Sudah Lunas
                   </span>
                   <div className="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-700">
-                    <CheckCircle2 className="w-4 h-4" />
+                    <CheckCheck className="w-4 h-4" />
                   </div>
                 </div>
                 <div className="font-outfit font-black text-2xl sm:text-3xl text-emerald-600 mt-2">
-                  {approvedBookings.length}
+                  {settledLunasBookings.length}
                 </div>
                 <div className="text-[11px] font-work text-slate-500 mt-0.5">
-                  Tiket resmi siap cetak/WA
+                  Booking lunas 100% (Selesai)
                 </div>
               </div>
 
               <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
                 <div className="flex items-center justify-between">
                   <span className="font-space text-[11px] font-bold text-blue-700 uppercase tracking-wider">
-                    DP Terkumpul
-                  </span>
-                  <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center text-blue-700">
-                    <Ticket className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="font-outfit font-black text-lg sm:text-2xl text-slate-900 mt-2 font-mono truncate">
-                  Rp {totalDpCollected.toLocaleString('id-ID')}
-                </div>
-                <div className="text-[11px] font-work text-slate-500 mt-0.5">
-                  Uang muka terverifikasi
-                </div>
-              </div>
-
-              <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
-                <div className="flex items-center justify-between">
-                  <span className="font-space text-[11px] font-bold text-orange-700 uppercase tracking-wider">
                     Sisa Pelunasan
                   </span>
-                  <div className="w-7 h-7 rounded-lg bg-orange-100 flex items-center justify-center text-orange-700">
+                  <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center text-blue-700">
                     <Sparkles className="w-4 h-4" />
                   </div>
                 </div>
-                <div className="font-outfit font-black text-lg sm:text-2xl text-orange-600 mt-2 font-mono truncate">
+                <div className="font-outfit font-black text-lg sm:text-2xl text-blue-700 mt-2 font-mono truncate">
                   Rp {totalRemaining.toLocaleString('id-ID')}
                 </div>
                 <div className="text-[11px] font-work text-slate-500 mt-0.5">
-                  Dibayar di Basecamp Kaliurang
+                  Akan dilunasi di Basecamp
                 </div>
               </div>
             </div>
-
 
             {/* Recent Confirmed Bookings Table Preview */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-7 space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div>
                   <h3 className="font-outfit font-black text-lg text-slate-900">
-                    Jadwal Tur Terverifikasi Terbaru
+                    Jadwal Tur Aktif Terbaru
                   </h3>
                   <p className="font-work text-xs text-slate-500 mt-0.5">
-                    Tiket resmi yang sudah diapprove oleh admin.
+                    Reservasi yang sedang berjalan dan menunggu hari-H.
                   </p>
                 </div>
 
@@ -939,14 +974,14 @@ export default function AdminDashboardPage() {
                   onClick={() => setActiveTab('approved')}
                   className="text-xs font-space font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1 cursor-pointer"
                 >
-                  <span>Lihat Semua ({approvedBookings.length})</span>
+                  <span>Lihat Jadwal Aktif ({activeUnpaidBookings.length})</span>
                   <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
 
-              {approvedBookings.length === 0 ? (
+              {activeUnpaidBookings.length === 0 ? (
                 <div className="py-8 text-center text-slate-400 font-work text-xs">
-                  Belum ada data booking ter-approve.
+                  Tidak ada jadwal tur aktif yang menunggu pelunasan saat ini.
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -957,35 +992,38 @@ export default function AdminDashboardPage() {
                         <th className="p-3">Nama Tamu</th>
                         <th className="p-3">Paket & Tanggal</th>
                         <th className="p-3 text-right">Total Deal</th>
-                        <th className="p-3 text-right">DP</th>
-                        <th className="p-3 text-center">Status</th>
-                        <th className="p-3 text-center">Tiket</th>
+                        <th className="p-3 text-right">DP Masuk</th>
+                        <th className="p-3 text-right">Sisa Lokasi</th>
+                        <th className="p-3 text-center">Aksi Cepat</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-slate-700">
-                      {approvedBookings.slice(0, 5).map((b) => (
+                      {activeUnpaidBookings.slice(0, 5).map((b) => (
                         <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
                           <td className="p-3 font-mono font-bold text-amber-700">{b.bookingCode}</td>
                           <td className="p-3 font-bold text-slate-900">{b.customerName}</td>
                           <td className="p-3 text-slate-600">{b.packageName} • {b.tourDate}</td>
                           <td className="p-3 text-right font-mono font-bold text-slate-900">Rp {b.totalAmount.toLocaleString('id-ID')}</td>
                           <td className="p-3 text-right font-mono font-bold text-emerald-700">Rp {b.dpAmount.toLocaleString('id-ID')}</td>
+                          <td className="p-3 text-right font-mono font-bold text-amber-700">Rp {b.remainingAmount.toLocaleString('id-ID')}</td>
                           <td className="p-3 text-center">
-                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-space font-bold uppercase ${
-                              b.remainingAmount === 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                            }`}>
-                              {b.remainingAmount === 0 ? 'LUNAS' : 'DP DITERIMA'}
-                            </span>
-                          </td>
-                          <td className="p-3 text-center">
-                            <Link
-                              href={`/invoice/${b.bookingCode}`}
-                              target="_blank"
-                              className="text-amber-600 hover:text-amber-700 font-space font-bold text-xs inline-flex items-center gap-1"
-                            >
-                              <span>Lihat</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </Link>
+                            <div className="flex items-center justify-center gap-1.5">
+                              <Link
+                                href={`/invoice/${b.bookingCode}`}
+                                target="_blank"
+                                className="p-1 rounded bg-slate-100 text-slate-700 hover:text-amber-600"
+                                title="Buka E-Tiket"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </Link>
+                              <button
+                                onClick={() => handleMarkLunas(b.id, b.customerName)}
+                                className="p-1 rounded bg-amber-50 text-amber-700 hover:bg-amber-100"
+                                title="Tandai Lunas"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -1129,34 +1167,53 @@ export default function AdminDashboardPage() {
         )}
 
         {/* ============================================================== */}
-        {/* TAB 2: DAFTAR BOOKING RESMI TER-APPROVE */}
+        {/* TAB 2: JADWAL TUR AKTIF (HANYA YANG BELUM LUNAS / DP) */}
         {/* ============================================================== */}
         {activeTab === 'approved' && (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-7 space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
               <div>
-                <h3 className="font-outfit font-black text-xl text-slate-900">
-                  Daftar Booking Resmi Terverifikasi
+                <h3 className="font-outfit font-black text-xl text-slate-900 flex items-center gap-2">
+                  <span>Jadwal Tur Aktif (Menunggu Pelunasan)</span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-space font-bold border border-amber-200">
+                    {activeUnpaidBookings.length} Tur
+                  </span>
                 </h3>
                 <p className="font-work text-xs text-slate-500 mt-0.5">
-                  Semua reservasi yang sudah di-approve. E-tiket dan invoice resmi siap dibagikan atau dicetak.
+                  Daftar tur yang telah di-approve dan masih menunggu pelunasan sisa di Basecamp. Setelah ditandai lunas, data otomatis dipindahkan ke tabel <strong>Riwayat Lunas</strong> agar halaman ini tetap bersih.
                 </p>
               </div>
 
-              {/* Search Bar */}
-              <div className="relative">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                <input
-                  type="text"
-                  placeholder="Cari nama, no hp, kode..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs focus:outline-none focus:border-amber-500 text-slate-800 placeholder-slate-400 w-full sm:w-64"
-                />
+              {/* Sub-tab navigation pills */}
+              <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl self-start sm:self-auto shrink-0">
+                <button
+                  onClick={() => setActiveTab('approved')}
+                  className="px-3 py-1.5 rounded-lg text-xs font-space font-bold bg-white text-slate-900 shadow-xs cursor-pointer"
+                >
+                  Jadwal Aktif ({activeUnpaidBookings.length})
+                </button>
+                <button
+                  onClick={() => setActiveTab('settled')}
+                  className="px-3 py-1.5 rounded-lg text-xs font-space font-bold text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                >
+                  Riwayat Lunas ({settledLunasBookings.length})
+                </button>
               </div>
             </div>
 
-            {/* Table */}
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+              <input
+                type="text"
+                placeholder="Cari nama tamu, no hp, kode booking..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs focus:outline-none focus:border-amber-500 text-slate-800 placeholder-slate-400 w-full sm:w-72"
+              />
+            </div>
+
+            {/* Table: ONLY Unpaid/Active Bookings */}
             <div className="overflow-x-auto rounded-xl border border-slate-200">
               <table className="w-full text-left font-work text-xs">
                 <thead className="bg-slate-50 text-slate-700 font-space text-[11px] uppercase border-b border-slate-200">
@@ -1166,20 +1223,26 @@ export default function AdminDashboardPage() {
                     <th className="p-3.5">Paket & Waktu</th>
                     <th className="p-3.5 text-right">Total Deal</th>
                     <th className="p-3.5 text-right">DP Masuk</th>
-                    <th className="p-3.5 text-right">Sisa Lokasi</th>
+                    <th className="p-3.5 text-right">Sisa Pelunasan</th>
                     <th className="p-3.5 text-center">Status</th>
-                    <th className="p-3.5 text-center">Aksi Cepat</th>
+                    <th className="p-3.5 text-center">Tindakan Kasir</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
-                  {approvedBookings.length === 0 ? (
+                  {activeUnpaidBookings.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="p-10 text-center text-slate-400">
-                        {loading ? 'Memuat data booking...' : 'Belum ada data booking ter-approve.'}
+                      <td colSpan={8} className="p-12 text-center text-slate-400 space-y-2">
+                        <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto opacity-70" />
+                        <p className="font-bold text-slate-700 text-sm">
+                          Tidak ada jadwal tur yang menunggu pelunasan!
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          Semua booking telah lunas dan tersimpan rapi di tab <strong>Riwayat Selesai & Lunas</strong>.
+                        </p>
                       </td>
                     </tr>
                   ) : (
-                    approvedBookings.map((b) => (
+                    activeUnpaidBookings.map((b) => (
                       <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="p-3.5">
                           <span className="font-mono font-bold text-amber-700 block text-xs">
@@ -1217,17 +1280,13 @@ export default function AdminDashboardPage() {
                         </td>
 
                         <td className="p-3.5 text-right font-mono font-bold text-amber-700">
-                          {b.remainingAmount === 0 ? 'LUNAS' : `Rp ${b.remainingAmount.toLocaleString('id-ID')}`}
+                          Rp {b.remainingAmount.toLocaleString('id-ID')}
                         </td>
 
                         <td className="p-3.5 text-center">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-space font-bold uppercase ${
-                            b.remainingAmount === 0
-                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                              : 'bg-amber-100 text-amber-800 border border-amber-300'
-                          }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${b.remainingAmount === 0 ? 'bg-emerald-600' : 'bg-amber-600'}`} />
-                            <span>{b.remainingAmount === 0 ? 'LUNAS' : 'DP DITERIMA'}</span>
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-space font-bold uppercase bg-amber-100 text-amber-800 border border-amber-300">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-600 animate-pulse" />
+                            <span>DP DITERIMA</span>
                           </span>
                         </td>
 
@@ -1252,21 +1311,183 @@ export default function AdminDashboardPage() {
                               <Phone className="w-4 h-4" />
                             </button>
 
-                            {/* Mark Lunas */}
-                            {b.remainingAmount > 0 && (
-                              <button
-                                onClick={() => handleMarkLunas(b.id)}
-                                title="Tandai Sudah Lunas"
-                                className="p-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 transition-colors cursor-pointer"
-                              >
-                                <CheckCircle2 className="w-4 h-4" />
-                              </button>
-                            )}
+                            {/* Mark Lunas -> Pindah ke tabel Lunas */}
+                            <button
+                              onClick={() => handleMarkLunas(b.id, b.customerName)}
+                              title="Tandai Sudah Lunas & Pindahkan ke Tabel Riwayat Lunas"
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-space font-bold text-xs shadow-xs transition-colors cursor-pointer"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Pelunasan Selesai</span>
+                            </button>
 
                             {/* Delete */}
                             <button
                               onClick={() => handleDelete(b.id)}
                               title="Hapus Booking"
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* TAB 2.5: RIWAYAT BOOKING SELESAI & LUNAS 100% (TABEL TERPISAH) */}
+        {/* ============================================================== */}
+        {activeTab === 'settled' && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-7 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+              <div>
+                <h3 className="font-outfit font-black text-xl text-slate-900 flex items-center gap-2">
+                  <span>Riwayat & Arsip Booking Lunas (Selesai 100%)</span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-space font-bold border border-emerald-200">
+                    {settledLunasBookings.length} Lunas
+                  </span>
+                </h3>
+                <p className="font-work text-xs text-slate-500 mt-0.5">
+                  Daftar transaksi yang sudah diselesaikan dan lunas 100%. Data di sini tersimpan rapi sebagai arsip resmi.
+                </p>
+              </div>
+
+              {/* Sub-tab navigation pills */}
+              <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl self-start sm:self-auto shrink-0">
+                <button
+                  onClick={() => setActiveTab('approved')}
+                  className="px-3 py-1.5 rounded-lg text-xs font-space font-bold text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                >
+                  Jadwal Aktif ({activeUnpaidBookings.length})
+                </button>
+                <button
+                  onClick={() => setActiveTab('settled')}
+                  className="px-3 py-1.5 rounded-lg text-xs font-space font-bold bg-white text-slate-900 shadow-xs cursor-pointer"
+                >
+                  Riwayat Lunas ({settledLunasBookings.length})
+                </button>
+              </div>
+            </div>
+
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+              <input
+                type="text"
+                placeholder="Cari arsip lunas..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs focus:outline-none focus:border-emerald-500 text-slate-800 placeholder-slate-400 w-full sm:w-72"
+              />
+            </div>
+
+            {/* Table: ONLY Settled/Lunas Bookings */}
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
+              <table className="w-full text-left font-work text-xs">
+                <thead className="bg-slate-50 text-slate-700 font-space text-[11px] uppercase border-b border-slate-200">
+                  <tr>
+                    <th className="p-3.5">Kode Tiket</th>
+                    <th className="p-3.5">Nama Tamu & HP</th>
+                    <th className="p-3.5">Paket Wisata</th>
+                    <th className="p-3.5">Driver & Jeep</th>
+                    <th className="p-3.5 text-right">Total Pembayaran</th>
+                    <th className="p-3.5 text-center">Metode</th>
+                    <th className="p-3.5 text-center">Status</th>
+                    <th className="p-3.5 text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-700">
+                  {settledLunasBookings.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="p-10 text-center text-slate-400">
+                        Belum ada riwayat booking yang berstatus lunas.
+                      </td>
+                    </tr>
+                  ) : (
+                    settledLunasBookings.map((b) => (
+                      <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="p-3.5">
+                          <span className="font-mono font-bold text-slate-900 block text-xs">
+                            {b.bookingCode}
+                          </span>
+                          <span className="text-[11px] text-slate-400">
+                            {b.tourDate} ({b.tourTime})
+                          </span>
+                        </td>
+
+                        <td className="p-3.5">
+                          <span className="font-bold text-slate-900 block text-sm">
+                            {b.customerName}
+                          </span>
+                          <span className="font-mono text-[11px] text-slate-500">
+                            {b.customerPhone}
+                          </span>
+                        </td>
+
+                        <td className="p-3.5">
+                          <span className="font-semibold text-slate-800 block">
+                            {b.packageName}
+                          </span>
+                          <span className="text-[11px] text-slate-500">
+                            {b.paxCount} Org ({b.jeepCount} Jeep)
+                          </span>
+                        </td>
+
+                        <td className="p-3.5">
+                          <span className="text-slate-800 font-medium block">
+                            {b.driverName || 'Mas Agus'}
+                          </span>
+                          <span className="text-[11px] text-slate-400 font-mono">
+                            {b.jeepNumber || 'AB 1928 MJ'}
+                          </span>
+                        </td>
+
+                        <td className="p-3.5 text-right font-mono font-bold text-emerald-700 text-sm">
+                          Rp {b.totalAmount.toLocaleString('id-ID')}
+                        </td>
+
+                        <td className="p-3.5 text-center font-space text-[11px] text-slate-600">
+                          {b.paymentMethod || 'Transfer BCA'}
+                        </td>
+
+                        <td className="p-3.5 text-center">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-space font-bold uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>LUNAS 100%</span>
+                          </span>
+                        </td>
+
+                        <td className="p-3.5 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            {/* View Invoice */}
+                            <Link
+                              href={`/invoice/${b.bookingCode}`}
+                              target="_blank"
+                              title="Buka e-Tiket / Invoice Resmi"
+                              className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                            >
+                              <Eye className="w-4 h-4 text-emerald-600" />
+                            </Link>
+
+                            {/* Send WhatsApp */}
+                            <button
+                              onClick={() => handleSendWa(b)}
+                              title="Kirim Konfirmasi Lunas ke WA Tamu"
+                              className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors cursor-pointer"
+                            >
+                              <Phone className="w-4 h-4" />
+                            </button>
+
+                            {/* Delete */}
+                            <button
+                              onClick={() => handleDelete(b.id)}
+                              title="Hapus Arsip"
                               className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                             >
                               <Trash2 className="w-4 h-4" />
