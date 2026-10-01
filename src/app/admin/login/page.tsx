@@ -12,8 +12,7 @@ import {
   ShieldCheck,
   ArrowRight,
   AlertCircle,
-  KeyRound,
-  Sparkles
+  KeyRound
 } from 'lucide-react';
 import { setClientSession } from '@/lib/adminAuth';
 
@@ -58,46 +57,38 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col justify-center items-center p-4 relative overflow-hidden selection:bg-amber-500 selection:text-slate-950 font-sans">
+    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col justify-center items-center p-4 relative font-sans antialiased">
       
-      {/* Background Ambience & Glowing Lights */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-amber-500/10 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-orange-600/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] opacity-25 pointer-events-none" />
-
-      {/* Main Login Card */}
+      {/* Main Login Container */}
       <div className="relative z-10 max-w-md w-full">
         
         {/* Brand Header */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-3 group mb-4">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-slate-950 shadow-xl shadow-amber-500/20 group-hover:scale-105 transition-transform">
+          <Link href="/" className="inline-flex items-center gap-3 group mb-3">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-slate-950 shadow-md shadow-amber-500/20 group-hover:scale-105 transition-transform">
               <Car className="w-7 h-7 text-slate-950" />
             </div>
             <div className="text-left">
-              <span className="font-outfit font-black text-2xl text-white tracking-tight block leading-none">
+              <span className="font-outfit font-black text-2xl text-slate-900 tracking-tight block leading-none">
                 MERAPI JEEP
               </span>
-              <span className="font-space font-bold text-[10px] text-amber-400 tracking-widest uppercase">
-                ADMIN COMMAND CENTER
+              <span className="font-space font-bold text-[10px] text-amber-600 tracking-widest uppercase">
+                ADMIN HQ PANEL
               </span>
             </div>
           </Link>
-          <p className="font-work text-xs text-slate-400 max-w-xs mx-auto">
-            Masuk untuk memverifikasi pesanan hasil deal WhatsApp dan menerbitkan tiket resmi.
+          <p className="font-work text-xs text-slate-500 max-w-xs mx-auto">
+            Masuk ke panel admin untuk verifikasi pesanan, terbitkan tiket resmi, dan kelola foto beranda.
           </p>
         </div>
 
         {/* Card Body */}
-        <div className="bg-slate-900/80 backdrop-blur-2xl p-7 sm:p-8 rounded-3xl border border-slate-800 shadow-2xl relative">
+        <div className="bg-white p-7 sm:p-8 rounded-3xl border border-slate-200 shadow-lg relative">
           
-          {/* Top glow border */}
-          <div className="absolute top-0 inset-x-8 h-px bg-gradient-to-r from-transparent via-amber-500/60 to-transparent" />
-
           {/* Error Banner */}
           {error && (
-            <div className="mb-5 p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center gap-2.5 animate-in fade-in">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+            <div className="mb-5 p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
               <span>{error}</span>
             </div>
           )}
@@ -105,45 +96,45 @@ export default function AdminLoginPage() {
           {/* Form */}
           <form onSubmit={handleLogin} className="space-y-4 font-work text-xs">
             <div>
-              <label className="font-space font-bold text-slate-300 block mb-1.5 uppercase tracking-wide">
-                Username / Email Admin
+              <label className="font-space font-bold text-slate-700 block mb-1.5 uppercase tracking-wide">
+                Username Admin
               </label>
               <div className="relative">
-                <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+                <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                 <input
                   type="text"
                   required
                   placeholder="admin"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full pl-10 pr-3.5 py-3 rounded-xl bg-slate-950/70 border border-slate-800 focus:outline-none focus:border-amber-500 text-white placeholder-slate-600 transition-colors"
+                  className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 focus:bg-white focus:outline-none focus:border-amber-500 text-slate-900 placeholder-slate-400 transition-colors"
                 />
               </div>
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="font-space font-bold text-slate-300 uppercase tracking-wide">
+                <label className="font-space font-bold text-slate-700 uppercase tracking-wide">
                   Kata Sandi
                 </label>
-                <span className="text-[11px] text-slate-500 font-work">
+                <span className="text-[11px] text-slate-400 font-work">
                   Default: admin123
                 </span>
               </div>
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-10 py-3 rounded-xl bg-slate-950/70 border border-slate-800 focus:outline-none focus:border-amber-500 text-white placeholder-slate-600 transition-colors"
+                  className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-50 border border-slate-300 focus:bg-white focus:outline-none focus:border-amber-500 text-slate-900 placeholder-slate-400 transition-colors"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-3.5 text-slate-500 hover:text-slate-300"
+                  className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -155,23 +146,23 @@ export default function AdminLoginPage() {
               <button
                 type="button"
                 onClick={handleDemoFill}
-                className="inline-flex items-center gap-1.5 text-[11px] font-space font-semibold text-amber-400 hover:text-amber-300 transition-colors"
+                className="inline-flex items-center gap-1.5 text-[11px] font-space font-bold text-amber-700 hover:text-amber-800 transition-colors cursor-pointer"
               >
                 <KeyRound className="w-3.5 h-3.5" />
-                <span>Auto-fill Demo Akun</span>
+                <span>Auto-fill Akun Demo</span>
               </button>
-              <div className="flex items-center gap-1 text-[11px] text-slate-500">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Enkripsi Aman</span>
+              <div className="flex items-center gap-1 text-[11px] text-slate-400">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Sesi Terenkripsi</span>
               </div>
             </div>
 
             {/* Submit Button */}
-            <div className="pt-3">
+            <div className="pt-2">
               <button
                 type="submit"
                 disabled={loading}
-                className="amber-gradient-btn w-full py-3.5 rounded-xl font-space font-bold text-xs text-slate-950 shadow-xl shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 group"
+                className="w-full py-3 rounded-xl font-space font-bold text-xs bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-colors group"
               >
                 <span>{loading ? 'Memverifikasi...' : 'MASUK KE DASHBOARD ADMIN'}</span>
                 <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
@@ -182,12 +173,12 @@ export default function AdminLoginPage() {
         </div>
 
         {/* Footer Back Link */}
-        <div className="mt-8 text-center">
+        <div className="mt-6 text-center">
           <Link
             href="/"
-            className="text-xs font-space font-semibold text-slate-500 hover:text-slate-300 transition-colors"
+            className="text-xs font-space font-semibold text-slate-500 hover:text-slate-800 transition-colors"
           >
-            ← Kembali ke Website Utama Merapi Jeep
+            ← Kembali ke Halaman Utama Website
           </Link>
         </div>
 

@@ -9,39 +9,28 @@ import {
   Search,
   CheckCircle2,
   Clock,
-  Printer,
-  Share2,
   Trash2,
   Phone,
   Eye,
-  DollarSign,
-  TrendingUp,
-  Users,
-  AlertCircle,
-  ArrowRight,
-  ExternalLink,
   RefreshCw,
   Home,
   LogOut,
-  ShieldCheck,
-  Calendar,
-  Sparkles,
-  QrCode,
-  FileText,
-  BadgePercent,
-  Check,
-  Compass,
   Bell,
   CheckSquare,
   X,
   Camera,
   Instagram,
   Play,
-  Film,
-  Image as ImageIcon,
-  ArrowUp,
-  ArrowDown,
-  Sliders
+  Sliders,
+  ExternalLink,
+  Menu,
+  LayoutDashboard,
+  Ticket,
+  ChevronRight,
+  ShieldCheck,
+  UserCheck,
+  Sparkles,
+  ArrowUpRight
 } from 'lucide-react';
 import { Booking } from '@/types/booking';
 import { GalleryItem, GalleryCategory } from '@/types/gallery';
@@ -51,6 +40,9 @@ import { isClientAuthenticated, clearClientSession } from '@/lib/adminAuth';
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
+  // Mobile sidebar drawer state
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,7 +68,7 @@ export default function AdminDashboardPage() {
   const [galleryCaption, setGalleryCaption] = useState('');
   const [gallerySubmitting, setGallerySubmitting] = useState(false);
 
-  // Approval Modal State (when admin clicks to approve a client's booking)
+  // Approval Modal State
   const [approvingBooking, setApprovingBooking] = useState<Booking | null>(null);
   const [dealTotal, setDealTotal] = useState<number | string>(500000);
   const [dealDp, setDealDp] = useState<number | string>(150000);
@@ -154,22 +146,22 @@ export default function AdminDashboardPage() {
 
     const tot = Number(dealTotal) || 0;
     const dp = Number(dealDp) || 0;
-    const remaining = Math.max(0, tot - dp);
+    const rem = Math.max(0, tot - dp);
+    const payStatus = rem === 0 ? 'LUNAS' : 'DP_PAID';
 
     try {
       const res = await fetch(`/api/bookings/${approvingBooking.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          approvalStatus: 'APPROVED',
+          paymentStatus: payStatus,
           totalAmount: tot,
           dpAmount: dp,
-          remainingAmount: remaining,
+          remainingAmount: rem,
           paymentMethod: dealPaymentMethod,
-          paymentStatus: remaining === 0 ? 'LUNAS' : (dp > 0 ? 'DP_DITERIMA' : 'MENUNGGU_PEMBAYARAN'),
-          approvalStatus: 'APPROVED',
           driverName: dealDriver,
           jeepNumber: dealJeepNumber,
-          approvedAt: new Date().toISOString(),
         }),
       });
 
@@ -190,7 +182,7 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Submit Manual Booking (if someone calls directly without web form)
+  // Submit Manual Booking
   const handleCreateManualBooking = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerName || !customerPhone) {
@@ -201,7 +193,6 @@ export default function AdminDashboardPage() {
     setSubmittingManual(true);
     const tot = Number(totalAmount) || 0;
     const dp = Number(dpAmount) || 0;
-    const rem = Math.max(0, tot - dp);
 
     try {
       const res = await fetch('/api/bookings', {
@@ -259,7 +250,7 @@ export default function AdminDashboardPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus booking ini?')) return;
+    if (!confirm('Apakah Anda yakin ingin menghapus data booking ini?')) return;
     try {
       const res = await fetch(`/api/bookings/${id}`, { method: 'DELETE' });
       const json = await res.json();
@@ -438,18 +429,22 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // WhatsApp Sender
   const handleSendWa = (b: Booking) => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const invoiceUrl = `${origin}/invoice/${b.bookingCode}`;
-    const text = `Halo Kak ${b.customerName}, terima kasih sudah reservasi di Merapi Jeep Adventure.%0A%0A` +
-      `Pesanan Anda sudah kami *APPROVE & TERKONFIRMASI*:%0A` +
-      `📌 *Kode Booking:* ${b.bookingCode}%0A` +
-      `🚙 *Paket:* ${b.packageName}%0A` +
-      `📅 *Tanggal:* ${b.tourDate} (${b.tourTime})%0A` +
-      `👥 *Peserta:* ${b.paxCount} Orang (${b.jeepCount} Jeep)%0A` +
-      `💰 *Total Deal:* Rp ${b.totalAmount.toLocaleString('id-ID')}%0A` +
-      `✅ *DP Masuk:* Rp ${b.dpAmount.toLocaleString('id-ID')}%0A` +
-      `⏳ *Sisa Pelunasan di Lokasi:* Rp ${b.remainingAmount.toLocaleString('id-ID')}%0A%0A` +
+
+    const text =
+      `Halo Kak *${b.customerName}*,%0A%0A` +
+      `Reservasi Merapi Jeep Adventure Anda telah *DISETUJUI & TIKET RESMI DITERBITKAN*! 🌋🚙%0A%0A` +
+      `📋 *Kode Tiket:* ${b.bookingCode}%0A` +
+      `📅 *Jadwal Tur:* ${b.tourDate} (${b.tourTime})%0A` +
+      `📦 *Paket:* ${b.packageName}%0A` +
+      `👥 *Peserta:* ${b.paxCount} Orang (${b.jeepCount} Unit Jeep)%0A` +
+      `👤 *Driver & Jeep:* ${b.driverName || 'Mas Agus'} (${b.jeepNumber || 'AB 1928 MJ'})%0A%0A` +
+      `💰 *Total Kesepakatan:* Rp ${b.totalAmount.toLocaleString('id-ID')}%0A` +
+      `✅ *DP Diterima:* Rp ${b.dpAmount.toLocaleString('id-ID')}%0A` +
+      `⏳ *Sisa Pelunasan di Basecamp:* Rp ${b.remainingAmount.toLocaleString('id-ID')}%0A%0A` +
       `Buka e-Tiket & Invoice resmi Anda melalui tautan berikut:%0A${encodeURIComponent(invoiceUrl)}%0A%0A` +
       `Sampai jumpa di Basecamp Kaliurang! 🌋`;
 
@@ -458,13 +453,12 @@ export default function AdminDashboardPage() {
   };
 
   // Stats
-  const totalRevenue = approvedBookings.reduce((sum, b) => sum + b.totalAmount, 0);
   const totalDpCollected = approvedBookings.reduce((sum, b) => sum + b.dpAmount, 0);
   const totalRemaining = approvedBookings.reduce((sum, b) => sum + b.remainingAmount, 0);
 
   if (isAuthenticated === null) {
     return (
-      <div className="min-h-screen bg-[#070b14] flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -472,172 +466,420 @@ export default function AdminDashboardPage() {
 
   if (!isAuthenticated) return null;
 
+  // Sidebar navigation menu definition
+  const menuItems = [
+    {
+      id: 'pending' as const,
+      label: 'Booking Masuk',
+      sublabel: 'Permintaan dari Web',
+      icon: Clock,
+      count: pendingBookings.length,
+      badgeColor: pendingBookings.length > 0 ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-600',
+    },
+    {
+      id: 'approved' as const,
+      label: 'Tiket & Jadwal Aktif',
+      sublabel: 'Booking Terverifikasi',
+      icon: CheckCircle2,
+      count: approvedBookings.length,
+      badgeColor: 'bg-emerald-100 text-emerald-700 font-bold',
+    },
+    {
+      id: 'manual' as const,
+      label: 'Input Booking Kasir',
+      sublabel: 'Direct Chat WA / Offline',
+      icon: PlusCircle,
+    },
+    {
+      id: 'gallery' as const,
+      label: 'Galeri & Video IG',
+      sublabel: 'Dokumentasi & Reels',
+      icon: Camera,
+      count: galleryItems.length,
+      badgeColor: 'bg-purple-100 text-purple-700 font-bold',
+    },
+    {
+      id: 'hero' as const,
+      label: 'Slideshow Beranda',
+      sublabel: 'Maksimal 5 Foto',
+      icon: Sliders,
+      countBadge: `${heroSlides.length}/${MAX_HERO_SLIDES}`,
+      badgeColor: heroSlides.length >= MAX_HERO_SLIDES ? 'bg-amber-100 text-amber-800 font-bold' : 'bg-slate-100 text-slate-700',
+    },
+  ];
+
+  const handleSelectTab = (tab: typeof activeTab) => {
+    setActiveTab(tab);
+    setIsMobileSidebarOpen(false); // Close mobile drawer when clicked
+  };
+
   return (
-    <div className="min-h-screen bg-[#070b14] text-slate-100 font-sans pb-24 selection:bg-amber-500 selection:text-slate-950">
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col lg:flex-row antialiased">
       
-      {/* Top Header */}
-      <header className="bg-slate-900/90 backdrop-blur-xl border-b border-slate-800 sticky top-0 z-40 shadow-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
+      {/* ============================================================== */}
+      {/* MOBILE TOP NAVBAR (Visible only on screens < lg) */}
+      {/* ============================================================== */}
+      <header className="lg:hidden bg-white border-b border-slate-200 sticky top-0 z-40 px-4 py-3 flex items-center justify-between shadow-xs">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsMobileSidebarOpen(true)}
+            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+            aria-label="Buka Menu Sidebar"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
           
-          <div className="flex items-center gap-3.5">
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-amber-500/20 group-hover:scale-105 transition-transform">
-                <Car className="w-6 h-6" />
-              </div>
-              <div>
-                <div className="font-outfit font-black text-base text-white tracking-tight flex items-center gap-2">
-                  MERAPI JEEP
-                  <span className="text-[10px] font-space font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full">
-                    ADMIN HQ
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 text-[11px] font-space text-slate-400">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Basecamp Kaliurang Barat • Online</span>
-                </div>
-              </div>
-            </Link>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-slate-950 font-bold shadow-xs">
+              <Car className="w-4 h-4 text-slate-950" />
+            </div>
+            <div>
+              <span className="font-outfit font-black text-sm text-slate-900 tracking-tight block leading-none">
+                MERAPI JEEP
+              </span>
+              <span className="text-[10px] font-space font-bold text-amber-600">
+                ADMIN PANEL
+              </span>
+            </div>
           </div>
+        </div>
 
-          <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              target="_blank"
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-xs font-space font-semibold text-slate-300 border border-slate-700/60 transition-colors"
-            >
-              <Home className="w-3.5 h-3.5" />
-              <span>Buka Website</span>
-            </Link>
-
+        <div className="flex items-center gap-2">
+          {pendingBookings.length > 0 && (
             <button
-              onClick={handleLogout}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-space font-bold transition-colors cursor-pointer"
+              onClick={() => handleSelectTab('pending')}
+              className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 text-xs font-space font-bold flex items-center gap-1.5"
             >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Keluar</span>
+              <Bell className="w-3.5 h-3.5 text-amber-600 animate-bounce" />
+              <span>{pendingBookings.length}</span>
             </button>
-          </div>
+          )}
 
+          <Link
+            href="/"
+            target="_blank"
+            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600"
+            title="Buka Website"
+          >
+            <Home className="w-4 h-4" />
+          </Link>
         </div>
       </header>
 
-      {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-8">
-        
-        {/* Title & Notification Banner if pending bookings exist */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="font-outfit font-black text-3xl sm:text-4xl text-white tracking-tight">
-              Pusat Approval & Konfirmasi Booking
-            </h1>
-            <p className="font-work text-xs sm:text-sm text-slate-400 mt-1">
-              Data yang diisi oleh client di website masuk ke sini. Admin tinggal mereview, menyepakati harga deal WA & DP, lalu klik <strong>Approve</strong>.
-            </p>
-          </div>
+      {/* ============================================================== */}
+      {/* MOBILE DRAWER BACKDROP */}
+      {/* ============================================================== */}
+      {isMobileSidebarOpen && (
+        <div
+          onClick={() => setIsMobileSidebarOpen(false)}
+          className="lg:hidden fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 transition-opacity"
+        />
+      )}
 
-          {pendingBookings.length > 0 && (
-            <div className="flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 text-xs font-space font-bold animate-pulse">
-              <Bell className="w-4 h-4" />
-              <span>Ada {pendingBookings.length} booking dari client menunggu persetujuan Anda!</span>
-            </div>
-          )}
+      {/* ============================================================== */}
+      {/* SIDEBAR NAVIGATION (Desktop: Sticky, Mobile: Drawer) */}
+      {/* ============================================================== */}
+      <aside
+        className={`fixed lg:sticky top-0 inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-200 flex flex-col justify-between shadow-lg lg:shadow-xs transition-transform duration-300 ease-in-out ${
+          isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}
+        style={{ height: '100vh' }}
+      >
+        {/* Top: Logo & System Header */}
+        <div className="p-5 border-b border-slate-100">
+          <div className="flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-3 group">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-slate-950 font-black shadow-md shadow-amber-500/20 group-hover:scale-105 transition-transform">
+                <Car className="w-5 h-5 text-slate-950" />
+              </div>
+              <div>
+                <div className="font-outfit font-black text-base text-slate-900 tracking-tight leading-tight">
+                  MERAPI JEEP
+                </div>
+                <div className="flex items-center gap-1.5 text-[11px] font-space text-slate-500 font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Admin Basecamp Online</span>
+                </div>
+              </div>
+            </Link>
+
+            {/* Close Button on Mobile Drawer */}
+            <button
+              onClick={() => setIsMobileSidebarOpen(false)}
+              className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
-        {/* 4 Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-slate-900/70 p-5 rounded-2xl border border-slate-800 shadow-md">
-            <span className="font-space text-xs font-bold text-amber-400 uppercase tracking-wider block">
-              Menunggu Approval
-            </span>
-            <div className="font-outfit font-black text-3xl text-white mt-1">
-              {pendingBookings.length} <span className="text-sm font-normal text-slate-500">Permintaan</span>
+        {/* Middle: Menu Navigation Items */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-1.5">
+          <div className="px-3 py-1.5 text-[11px] font-space font-bold uppercase tracking-wider text-slate-400">
+            Menu Utama
+          </div>
+
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleSelectTab(item.id)}
+                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl font-space text-xs font-semibold transition-all cursor-pointer text-left ${
+                  isActive
+                    ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20 font-bold'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`p-1.5 rounded-lg ${isActive ? 'bg-amber-600/30 text-slate-950' : 'bg-slate-100 text-slate-600'}`}>
+                    <Icon className="w-4 h-4 shrink-0" />
+                  </div>
+                  <div className="truncate">
+                    <span className="block truncate font-bold">{item.label}</span>
+                    <span className={`block text-[10px] truncate ${isActive ? 'text-slate-900/80 font-medium' : 'text-slate-400'}`}>
+                      {item.sublabel}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Counter Badges */}
+                {item.count !== undefined && (
+                  <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] shrink-0 font-bold ${item.badgeColor}`}>
+                    {item.count}
+                  </span>
+                )}
+                {item.countBadge && (
+                  <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] shrink-0 font-mono font-bold ${item.badgeColor}`}>
+                    {item.countBadge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+
+          <div className="pt-4 px-3 py-1.5 text-[11px] font-space font-bold uppercase tracking-wider text-slate-400">
+            Akses Publik
+          </div>
+
+          <Link
+            href="/"
+            target="_blank"
+            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-space text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-1.5 rounded-lg bg-slate-100 text-slate-600">
+                <Home className="w-4 h-4" />
+              </div>
+              <span>Lihat Website Beranda</span>
             </div>
-            <div className="text-[11px] font-work text-slate-400 mt-1">
-              Inputan langsung dari website tamu
+            <ArrowUpRight className="w-3.5 h-3.5 text-slate-400" />
+          </Link>
+        </div>
+
+        {/* Bottom: Profile & Logout */}
+        <div className="p-4 border-t border-slate-100 bg-slate-50/70 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center font-outfit font-black text-amber-800 text-sm">
+                AD
+              </div>
+              <div className="leading-tight">
+                <span className="font-outfit font-bold text-xs text-slate-900 block">
+                  Admin Basecamp
+                </span>
+                <span className="text-[10px] font-space text-slate-500 block">
+                  Super Admin • Aktif
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={handleLogout}
+              className="p-2 rounded-xl text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
+              title="Keluar dari Admin"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* ============================================================== */}
+      {/* MAIN CONTENT AREA */}
+      {/* ============================================================== */}
+      <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full">
+        
+        {/* Top Header Bar for Desktop: Breadcrumb & Refresh */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200/80">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-space text-slate-500 mb-1">
+              <span>Admin Dashboard</span>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+              <span className="font-bold text-amber-600">
+                {activeTab === 'pending' && 'Permintaan Masuk'}
+                {activeTab === 'approved' && 'Tiket & Jadwal Aktif'}
+                {activeTab === 'manual' && 'Input Booking Kasir'}
+                {activeTab === 'gallery' && 'Kelola Galeri & IG'}
+                {activeTab === 'hero' && 'Slideshow Beranda (Maks 5 Foto)'}
+              </span>
+            </div>
+            <h1 className="font-outfit font-black text-2xl sm:text-3xl text-slate-900 tracking-tight">
+              {activeTab === 'pending' && 'Konfirmasi & Approval Booking Client'}
+              {activeTab === 'approved' && 'Jadwal Tur & Invoice Resmi Terverifikasi'}
+              {activeTab === 'manual' && 'Input Booking Manual (WhatsApp / Kasir)'}
+              {activeTab === 'gallery' && 'Galeri Dokumentasi & Video Reels IG'}
+              {activeTab === 'hero' && 'Kelola Foto Slideshow Beranda (Maks 5)'}
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-2.5 self-start sm:self-auto">
+            <button
+              onClick={fetchBookings}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-xs font-space font-semibold text-slate-700 shadow-xs transition-colors cursor-pointer"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-amber-500' : 'text-slate-500'}`} />
+              <span>Segarkan Data</span>
+            </button>
+
+            <Link
+              href="/"
+              target="_blank"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-xs font-space font-bold text-slate-950 shadow-xs transition-colors"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Preview Web</span>
+            </Link>
+          </div>
+        </div>
+
+        {/* 4 Summary Metric Cards (Light Clean Cards) */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div
+            onClick={() => setActiveTab('pending')}
+            className={`p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer ${
+              activeTab === 'pending'
+                ? 'bg-amber-50 border-amber-300 shadow-sm'
+                : 'bg-white border-slate-200 hover:border-amber-300 shadow-xs'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="font-space text-[11px] font-bold text-amber-700 uppercase tracking-wider">
+                Booking Masuk
+              </span>
+              <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center text-amber-700">
+                <Clock className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="font-outfit font-black text-2xl sm:text-3xl text-slate-900 mt-2">
+              {pendingBookings.length}
+            </div>
+            <div className="text-[11px] font-work text-slate-500 mt-0.5">
+              Menunggu persetujuan deal
             </div>
           </div>
 
-          <div className="bg-slate-900/70 p-5 rounded-2xl border border-slate-800 shadow-md">
-            <span className="font-space text-xs font-bold text-emerald-400 uppercase tracking-wider block">
-              Booking Ter-Approve
-            </span>
-            <div className="font-outfit font-black text-3xl text-emerald-400 mt-1">
-              {approvedBookings.length} <span className="text-sm font-normal text-slate-500">Tiket Resmi</span>
+          <div
+            onClick={() => setActiveTab('approved')}
+            className={`p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer ${
+              activeTab === 'approved'
+                ? 'bg-emerald-50 border-emerald-300 shadow-sm'
+                : 'bg-white border-slate-200 hover:border-emerald-300 shadow-xs'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="font-space text-[11px] font-bold text-emerald-700 uppercase tracking-wider">
+                Ter-Approve
+              </span>
+              <div className="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-700">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
             </div>
-            <div className="text-[11px] font-work text-slate-400 mt-1">
-              Sudah deal & diterbitkan tiket
+            <div className="font-outfit font-black text-2xl sm:text-3xl text-emerald-600 mt-2">
+              {approvedBookings.length}
+            </div>
+            <div className="text-[11px] font-work text-slate-500 mt-0.5">
+              Tiket resmi siap cetak/WA
             </div>
           </div>
 
-          <div className="bg-slate-900/70 p-5 rounded-2xl border border-slate-800 shadow-md">
-            <span className="font-space text-xs font-bold text-blue-400 uppercase tracking-wider block">
-              DP Terkumpul
-            </span>
-            <div className="font-outfit font-black text-2xl text-white mt-1 font-mono">
+          <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
+            <div className="flex items-center justify-between">
+              <span className="font-space text-[11px] font-bold text-blue-700 uppercase tracking-wider">
+                DP Terkumpul
+              </span>
+              <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center text-blue-700">
+                <Ticket className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="font-outfit font-black text-lg sm:text-2xl text-slate-900 mt-2 font-mono truncate">
               Rp {totalDpCollected.toLocaleString('id-ID')}
             </div>
-            <div className="text-[11px] font-work text-slate-400 mt-1">
+            <div className="text-[11px] font-work text-slate-500 mt-0.5">
               Uang muka terverifikasi
             </div>
           </div>
 
-          <div className="bg-slate-900/70 p-5 rounded-2xl border border-slate-800 shadow-md">
-            <span className="font-space text-xs font-bold text-amber-400 uppercase tracking-wider block">
-              Sisa Pelunasan
-            </span>
-            <div className="font-outfit font-black text-2xl text-amber-400 mt-1 font-mono">
+          <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
+            <div className="flex items-center justify-between">
+              <span className="font-space text-[11px] font-bold text-orange-700 uppercase tracking-wider">
+                Sisa Pelunasan
+              </span>
+              <div className="w-7 h-7 rounded-lg bg-orange-100 flex items-center justify-center text-orange-700">
+                <Sparkles className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="font-outfit font-black text-lg sm:text-2xl text-orange-600 mt-2 font-mono truncate">
               Rp {totalRemaining.toLocaleString('id-ID')}
             </div>
-            <div className="text-[11px] font-work text-slate-400 mt-1">
-              Akan dilunasi saat tiba di Basecamp
+            <div className="text-[11px] font-work text-slate-500 mt-0.5">
+              Dibayar di Basecamp Kaliurang
             </div>
           </div>
         </div>
 
-        {/* Success Modal / Banner After Approval */}
+        {/* Success Banner After Approval */}
         {successBooking && (
-          <div className="p-6 rounded-3xl bg-emerald-950/40 border-2 border-emerald-500/60 shadow-2xl space-y-4 animate-in fade-in">
+          <div className="p-5 sm:p-6 rounded-2xl bg-emerald-50 border-2 border-emerald-300 shadow-sm space-y-3">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-slate-950 flex items-center justify-center shrink-0 font-bold">
-                  <CheckCircle2 className="w-7 h-7" />
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-6 h-6" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-outfit font-black text-xl text-white">
-                      Booking Berhasil Di-Approve & Tiket Resmi Diterbitkan!
+                    <h3 className="font-outfit font-black text-base sm:text-lg text-emerald-950">
+                      Booking Berhasil Disetujui & Tiket Resmi Diterbitkan!
                     </h3>
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-space font-bold uppercase">
-                      OFFICIAL TICKET ISSUED
-                    </span>
                   </div>
-                  <p className="font-work text-xs text-slate-300 mt-1">
-                    Kode Tiket: <span className="font-mono font-bold text-amber-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-700">{successBooking.bookingCode}</span> atas nama <strong className="text-white">{successBooking.customerName}</strong> ({successBooking.customerPhone}).
+                  <p className="font-work text-xs text-emerald-800 mt-0.5">
+                    Kode Tiket: <span className="font-mono font-bold bg-white px-2 py-0.5 rounded border border-emerald-300 text-emerald-900">{successBooking.bookingCode}</span> atas nama <strong>{successBooking.customerName}</strong> ({successBooking.customerPhone}).
                   </p>
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2">
                 <Link
                   href={`/invoice/${successBooking.bookingCode}`}
                   target="_blank"
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-space font-bold text-white border border-slate-700 shadow-md transition-all"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-xs font-space font-bold text-slate-800 border border-slate-300 shadow-xs transition-all"
                 >
-                  <Eye className="w-4 h-4 text-amber-400" />
-                  <span>Buka E-Tiket / Invoice</span>
+                  <Eye className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Buka E-Tiket</span>
                 </Link>
 
                 <button
                   onClick={() => handleSendWa(successBooking)}
-                  className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-space font-bold shadow-lg shadow-emerald-600/30 transition-all cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-space font-bold shadow-xs transition-all cursor-pointer"
                 >
-                  <Phone className="w-4 h-4" />
-                  <span>Kirim Tiket ke WA Tamu</span>
+                  <Phone className="w-3.5 h-3.5" />
+                  <span>Kirim Tiket ke WA</span>
                 </button>
 
                 <button
                   onClick={() => setSuccessBooking(null)}
-                  className="text-xs font-space text-slate-400 hover:text-white px-2 py-1"
+                  className="text-xs font-space text-slate-500 hover:text-slate-800 px-2 py-1"
                 >
                   Tutup
                 </button>
@@ -646,185 +888,116 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* Tab Navigation */}
-        <div className="flex flex-nowrap items-center gap-2 p-1.5 rounded-2xl bg-slate-900 border border-slate-800 self-start max-w-full overflow-x-auto [&>button]:whitespace-nowrap [&>button]:shrink-0">
-          <button
-            onClick={() => setActiveTab('pending')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-space font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'pending'
-                ? 'bg-amber-500 text-slate-950 shadow-md'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Clock className="w-4 h-4" />
-            <span>Permintaan Booking Client</span>
-            {pendingBookings.length > 0 && (
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                activeTab === 'pending' ? 'bg-slate-950 text-amber-400' : 'bg-amber-500 text-slate-950'
-              }`}>
-                {pendingBookings.length}
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('approved')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-space font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'approved'
-                ? 'bg-amber-500 text-slate-950 shadow-md'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <CheckCircle2 className="w-4 h-4" />
-            <span>Booking Resmi Ter-Approve ({approvedBookings.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('manual')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-space font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'manual'
-                ? 'bg-amber-500 text-slate-950 shadow-md'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>+ Input Manual (Direct WA)</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('gallery')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-space font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'gallery'
-                ? 'bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 text-white shadow-md'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Instagram className="w-4 h-4" />
-            <span>📸 Kelola Galeri & Video IG ({galleryItems.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('hero')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-space font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'hero'
-                ? 'bg-amber-500 text-slate-950 shadow-md font-black'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Sliders className="w-4 h-4" />
-            <span>🖼️ Slideshow Beranda ({heroSlides.length}/{MAX_HERO_SLIDES})</span>
-          </button>
-        </div>
-
+        {/* ============================================================== */}
         {/* TAB 1: PERMINTAAN BOOKING DARI CLIENT (MENUNGGU APPROVAL) */}
+        {/* ============================================================== */}
         {activeTab === 'pending' && (
-          <div className="bg-slate-900/80 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-xl space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-7 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
               <div>
-                <h3 className="font-outfit font-black text-xl text-white flex flex-wrap items-center gap-2">
-                  <span>Permintaan Masuk dari Client Website</span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-space font-bold">
-                    Menunggu Approval
+                <h3 className="font-outfit font-black text-xl text-slate-900 flex flex-wrap items-center gap-2">
+                  <span>Permintaan Masuk dari Tamu Website</span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-space font-bold border border-amber-200">
+                    {pendingBookings.length} Menunggu Konfirmasi
                   </span>
                 </h3>
-                <p className="font-work text-xs text-slate-400 mt-1">
-                  Client sudah mengisi data di website. Klik <strong>"Review & Approve Deal"</strong> untuk memasukkan harga kesepakatan WA dan menerbitkan invoice resminya.
+                <p className="font-work text-xs text-slate-500 mt-1">
+                  Data yang diisi oleh client di website langsung muncul di sini. Klik tombol <strong>"Review & Approve Deal"</strong> untuk mengisi harga deal & menerbitkan tiket.
                 </p>
               </div>
 
               <button
                 onClick={fetchBookings}
-                className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors shrink-0 self-start sm:self-auto"
-                title="Refresh"
+                className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors shrink-0 self-start sm:self-auto cursor-pointer"
+                title="Refresh Data"
               >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-amber-500' : ''}`} />
               </button>
             </div>
 
             {pendingBookings.length === 0 ? (
-              <div className="p-12 text-center text-slate-500 space-y-2">
-                <CheckCircle2 className="w-12 h-12 text-slate-700 mx-auto" />
-                <p className="font-outfit font-bold text-base text-slate-300">
-                  Tidak ada permintaan booking yang pending saat ini.
+              <div className="py-16 text-center text-slate-500 space-y-2">
+                <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto opacity-70" />
+                <p className="font-outfit font-bold text-base text-slate-800">
+                  Semua permintaan booking telah disetujui!
                 </p>
-                <p className="font-work text-xs text-slate-500">
-                  Semua reservasi client dari website telah disetujui atau belum ada inputan baru.
+                <p className="font-work text-xs text-slate-400">
+                  Tidak ada permintaan reservasi yang tertunda saat ini.
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {pendingBookings.map((b) => (
                   <div
                     key={b.id}
-                    className="p-6 rounded-2xl bg-slate-950/80 border border-amber-500/30 hover:border-amber-400 shadow-lg space-y-4 relative group transition-all"
+                    className="p-5 rounded-2xl bg-white border-2 border-amber-200/80 hover:border-amber-400 shadow-xs hover:shadow-md transition-all space-y-4"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-amber-400 text-xs bg-slate-900 px-2.5 py-1 rounded border border-slate-800 whitespace-nowrap">
+                        <span className="font-mono font-bold text-amber-700 text-xs bg-amber-50 px-2.5 py-0.5 rounded border border-amber-200">
                           {b.bookingCode}
                         </span>
-                        <span className="text-[10px] font-space text-slate-500 whitespace-nowrap">
+                        <span className="text-[11px] font-space text-slate-400">
                           {new Date(b.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB
                         </span>
                       </div>
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-space font-bold uppercase bg-amber-500/10 text-amber-400 border border-amber-500/30 whitespace-nowrap">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-space font-bold uppercase bg-amber-100 text-amber-800 border border-amber-200">
                         PENDING APPROVAL
                       </span>
                     </div>
 
-                    {/* Customer Info (Already filled by client!) */}
-                    <div className="space-y-1.5 pt-1">
-                      <h4 className="font-outfit font-black text-lg text-white">
+                    {/* Customer Info */}
+                    <div className="space-y-1">
+                      <h4 className="font-outfit font-black text-lg text-slate-900">
                         {b.customerName}
                       </h4>
-                      <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
-                        <Phone className="w-3.5 h-3.5 text-amber-500" />
+                      <div className="flex items-center gap-2 text-xs font-mono text-slate-600">
+                        <Phone className="w-3.5 h-3.5 text-emerald-600" />
                         <span>{b.customerPhone}</span>
                       </div>
                     </div>
 
                     {/* Trip details requested */}
-                    <div className="grid grid-cols-2 gap-2 p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs">
+                    <div className="grid grid-cols-2 gap-2 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
                       <div>
                         <span className="text-[10px] font-space text-slate-500 uppercase block">Paket Pilihan</span>
-                        <span className="font-bold text-slate-200">{b.packageName}</span>
+                        <span className="font-bold text-slate-800">{b.packageName}</span>
                       </div>
                       <div>
-                        <span className="text-[10px] font-space text-slate-500 uppercase block">Tanggal Tur</span>
-                        <span className="font-bold text-slate-200">{b.tourDate} ({b.tourTime})</span>
+                        <span className="text-[10px] font-space text-slate-500 uppercase block">Jadwal Tur</span>
+                        <span className="font-bold text-slate-800">{b.tourDate} ({b.tourTime})</span>
                       </div>
                       <div className="mt-1">
                         <span className="text-[10px] font-space text-slate-500 uppercase block">Peserta</span>
-                        <span className="font-bold text-slate-200">{b.paxCount} Orang</span>
+                        <span className="font-bold text-slate-800">{b.paxCount} Orang</span>
                       </div>
                       <div className="mt-1">
                         <span className="text-[10px] font-space text-slate-500 uppercase block">Estimasi Jeep</span>
-                        <span className="font-bold text-amber-400">{b.jeepCount} Unit</span>
+                        <span className="font-bold text-amber-700">{b.jeepCount} Unit</span>
                       </div>
                     </div>
 
-                    {/* Notes if any */}
                     {b.notes && (
-                      <div className="p-2.5 rounded-lg bg-slate-900 text-slate-400 text-[11px] italic">
+                      <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 text-[11px] italic">
                         "{b.notes}"
                       </div>
                     )}
 
-                    {/* Actions */}
+                    {/* Action buttons */}
                     <div className="pt-2 flex items-center gap-2">
                       <button
                         onClick={() => handleOpenApproveModal(b)}
-                        className="amber-gradient-btn flex-1 min-w-0 px-3 py-3 rounded-xl font-space font-bold text-xs text-slate-950 flex items-center justify-center gap-2 shadow-md hover:brightness-110 cursor-pointer"
+                        className="flex-1 py-2.5 px-3 rounded-xl font-space font-bold text-xs bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
                       >
                         <CheckSquare className="w-4 h-4 shrink-0" />
-                        <span className="text-center leading-tight">REVIEW & APPROVE<span className="hidden sm:inline"> DEAL INI</span></span>
+                        <span>REVIEW & APPROVE</span>
                       </button>
 
                       <a
                         href={`https://wa.me/${b.customerPhone.replace(/^0/, '62').replace(/[^0-9]/g, '')}?text=Halo%20Kak%20${encodeURIComponent(b.customerName)},%20kami%20dari%20Merapi%20Jeep%20Adventure%20melihat%20reservasi%20Kakak%20untuk%20${encodeURIComponent(b.packageName)}%20di%20tanggal%20${b.tourDate}.%20Boleh%20kami%20bantu%20konfirmasi%20kesepakatan%20harga%20dan%20DP?`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-3 shrink-0 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 transition-colors"
+                        className="p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors"
                         title="Chat WA Pelanggan"
                       >
                         <Phone className="w-4 h-4" />
@@ -832,7 +1005,7 @@ export default function AdminDashboardPage() {
 
                       <button
                         onClick={() => handleDelete(b.id)}
-                        className="p-3 shrink-0 rounded-xl bg-slate-900 hover:bg-red-500/20 text-slate-500 hover:text-red-400 border border-slate-800 transition-colors cursor-pointer"
+                        className="p-2.5 rounded-xl bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-600 border border-slate-200 transition-colors cursor-pointer"
                         title="Tolak / Hapus"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -845,77 +1018,79 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
+        {/* ============================================================== */}
         {/* TAB 2: DAFTAR BOOKING RESMI TER-APPROVE */}
+        {/* ============================================================== */}
         {activeTab === 'approved' && (
-          <div className="bg-slate-900/80 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-xl space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-7 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
               <div>
-                <h3 className="font-outfit font-black text-xl text-white">
+                <h3 className="font-outfit font-black text-xl text-slate-900">
                   Daftar Booking Resmi Terverifikasi
                 </h3>
-                <p className="font-work text-xs text-slate-400">
-                  Data yang sudah di-approve oleh admin. E-tiket dan invoice resmi siap dibagikan atau dicetak.
+                <p className="font-work text-xs text-slate-500 mt-0.5">
+                  Semua reservasi yang sudah di-approve. E-tiket dan invoice resmi siap dibagikan atau dicetak.
                 </p>
               </div>
 
-              {/* Search */}
+              {/* Search Bar */}
               <div className="relative">
-                <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                 <input
                   type="text"
                   placeholder="Cari nama, no hp, kode..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10 pr-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs focus:outline-none focus:border-amber-500 text-white placeholder-slate-600"
+                  className="pl-10 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs focus:outline-none focus:border-amber-500 text-slate-800 placeholder-slate-400 w-full sm:w-64"
                 />
               </div>
             </div>
 
             {/* Table */}
-            <div className="overflow-x-auto rounded-2xl border border-slate-800">
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
               <table className="w-full text-left font-work text-xs">
-                <thead className="bg-slate-950 text-slate-400 font-space text-[11px] uppercase border-b border-slate-800">
+                <thead className="bg-slate-50 text-slate-700 font-space text-[11px] uppercase border-b border-slate-200">
                   <tr>
-                    <th className="p-4">Kode Tiket</th>
-                    <th className="p-4">Nama Tamu & HP</th>
-                    <th className="p-4">Paket & Waktu</th>
-                    <th className="p-4 text-right">Total Deal</th>
-                    <th className="p-4 text-right">DP Masuk</th>
-                    <th className="p-4 text-right">Sisa Lokasi</th>
-                    <th className="p-4 text-center">Status</th>
-                    <th className="p-4 text-center">Aksi Cepat</th>
+                    <th className="p-3.5">Kode Tiket</th>
+                    <th className="p-3.5">Nama Tamu & HP</th>
+                    <th className="p-3.5">Paket & Waktu</th>
+                    <th className="p-3.5 text-right">Total Deal</th>
+                    <th className="p-3.5 text-right">DP Masuk</th>
+                    <th className="p-3.5 text-right">Sisa Lokasi</th>
+                    <th className="p-3.5 text-center">Status</th>
+                    <th className="p-3.5 text-center">Aksi Cepat</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                <tbody className="divide-y divide-slate-100 text-slate-700">
                   {approvedBookings.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="p-10 text-center text-slate-500">
+                      <td colSpan={8} className="p-10 text-center text-slate-400">
                         {loading ? 'Memuat data booking...' : 'Belum ada data booking ter-approve.'}
                       </td>
                     </tr>
                   ) : (
                     approvedBookings.map((b) => (
-                      <tr key={b.id} className="hover:bg-slate-800/40 transition-colors">
-                        <td className="p-4">
-                          <span className="font-mono font-bold text-amber-400 block text-xs">
+                      <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="p-3.5">
+                          <span className="font-mono font-bold text-amber-700 block text-xs">
                             {b.bookingCode}
                           </span>
-                          <span className="text-[11px] text-slate-500">
+                          <span className="text-[11px] text-slate-400">
                             {b.tourDate}
                           </span>
                         </td>
 
-                        <td className="p-4">
-                          <span className="font-bold text-white block text-sm">
+                        <td className="p-3.5">
+                          <span className="font-bold text-slate-900 block text-sm">
                             {b.customerName}
                           </span>
-                          <span className="font-mono text-[11px] text-slate-400">
+                          <span className="font-mono text-[11px] text-slate-500">
                             {b.customerPhone}
                           </span>
                         </td>
 
-                        <td className="p-4">
-                          <span className="font-semibold text-slate-200 block">
+                        <td className="p-3.5">
+                          <span className="font-semibold text-slate-800 block">
                             {b.packageName}
                           </span>
                           <span className="text-[11px] text-slate-500">
@@ -923,46 +1098,46 @@ export default function AdminDashboardPage() {
                           </span>
                         </td>
 
-                        <td className="p-4 text-right font-mono font-bold text-white">
+                        <td className="p-3.5 text-right font-mono font-bold text-slate-900">
                           Rp {b.totalAmount.toLocaleString('id-ID')}
                         </td>
 
-                        <td className="p-4 text-right font-mono font-bold text-emerald-400">
+                        <td className="p-3.5 text-right font-mono font-bold text-emerald-700">
                           Rp {b.dpAmount.toLocaleString('id-ID')}
                         </td>
 
-                        <td className="p-4 text-right font-mono font-bold text-amber-400">
+                        <td className="p-3.5 text-right font-mono font-bold text-amber-700">
                           {b.remainingAmount === 0 ? 'LUNAS' : `Rp ${b.remainingAmount.toLocaleString('id-ID')}`}
                         </td>
 
-                        <td className="p-4 text-center">
-                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-space font-bold uppercase ${
+                        <td className="p-3.5 text-center">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-space font-bold uppercase ${
                             b.remainingAmount === 0
-                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                              : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                              : 'bg-amber-100 text-amber-800 border border-amber-300'
                           }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${b.remainingAmount === 0 ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                            <span className={`w-1.5 h-1.5 rounded-full ${b.remainingAmount === 0 ? 'bg-emerald-600' : 'bg-amber-600'}`} />
                             <span>{b.remainingAmount === 0 ? 'LUNAS' : 'DP DITERIMA'}</span>
                           </span>
                         </td>
 
-                        <td className="p-4 text-center">
-                          <div className="flex items-center justify-center gap-2">
+                        <td className="p-3.5 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
                             {/* View Invoice */}
                             <Link
                               href={`/invoice/${b.bookingCode}`}
                               target="_blank"
                               title="Buka e-Tiket / Invoice Resmi"
-                              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+                              className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
                             >
-                              <Eye className="w-4 h-4 text-amber-400" />
+                              <Eye className="w-4 h-4 text-amber-600" />
                             </Link>
 
                             {/* Send WhatsApp */}
                             <button
                               onClick={() => handleSendWa(b)}
                               title="Kirim Invoice ke WA Tamu"
-                              className="p-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 transition-colors cursor-pointer"
+                              className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors cursor-pointer"
                             >
                               <Phone className="w-4 h-4" />
                             </button>
@@ -972,7 +1147,7 @@ export default function AdminDashboardPage() {
                               <button
                                 onClick={() => handleMarkLunas(b.id)}
                                 title="Tandai Sudah Lunas"
-                                className="p-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 transition-colors cursor-pointer"
+                                className="p-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 transition-colors cursor-pointer"
                               >
                                 <CheckCircle2 className="w-4 h-4" />
                               </button>
@@ -982,7 +1157,7 @@ export default function AdminDashboardPage() {
                             <button
                               onClick={() => handleDelete(b.id)}
                               title="Hapus Booking"
-                              className="p-2 rounded-xl hover:bg-red-500/20 text-slate-500 hover:text-red-400 transition-colors cursor-pointer"
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -997,14 +1172,16 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* TAB 3: INPUT MANUAL (DIRECT CHAT WA) */}
+        {/* ============================================================== */}
+        {/* TAB 3: INPUT MANUAL (DIRECT CHAT WA / KASIR) */}
+        {/* ============================================================== */}
         {activeTab === 'manual' && (
-          <div className="bg-slate-900/80 backdrop-blur-xl p-6 sm:p-8 rounded-3xl border border-slate-800 shadow-xl space-y-6">
-            <div>
-              <h3 className="font-outfit font-black text-xl text-white">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-7 space-y-6">
+            <div className="pb-4 border-b border-slate-100">
+              <h3 className="font-outfit font-black text-xl text-slate-900">
                 Input Manual Booking Hasil Chat WA Langsung
               </h3>
-              <p className="font-work text-xs text-slate-400 mt-1">
+              <p className="font-work text-xs text-slate-500 mt-0.5">
                 Gunakan menu ini jika pelanggan mengontak WhatsApp secara langsung tanpa melalui form di website.
               </p>
             </div>
@@ -1012,34 +1189,36 @@ export default function AdminDashboardPage() {
             <form onSubmit={handleCreateManualBooking} className="space-y-4 font-work text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="font-space font-bold text-slate-300 block mb-1">Nama Tamu *</label>
+                  <label className="font-space font-bold text-slate-700 block mb-1">Nama Tamu *</label>
                   <input
                     type="text"
                     required
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white"
+                    placeholder="Contoh: Bpk. Budi Santoso"
+                    className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-800 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
                   />
                 </div>
                 <div>
-                  <label className="font-space font-bold text-slate-300 block mb-1">No WhatsApp *</label>
+                  <label className="font-space font-bold text-slate-700 block mb-1">No WhatsApp *</label>
                   <input
                     type="tel"
                     required
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white"
+                    placeholder="08123456789"
+                    className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-800 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none"
                   />
                 </div>
                 <div>
-                  <label className="font-space font-bold text-slate-300 block mb-1">Paket Wisata</label>
+                  <label className="font-space font-bold text-slate-700 block mb-1">Paket Wisata</label>
                   <select
                     value={packageName}
                     onChange={(e) => setPackageName(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white"
+                    className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-800 focus:border-amber-500 outline-none"
                   >
                     <option value="Paket Short">Paket Short</option>
-                    <option value="Paket Medium">Paket Medium</option>
+                    <option value="Paket Medium (Best Seller)">Paket Medium (Best Seller)</option>
                     <option value="Paket Long">Paket Long</option>
                     <option value="Paket Sunrise">Paket Sunrise</option>
                   </select>
@@ -1048,95 +1227,98 @@ export default function AdminDashboardPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <div>
-                  <label className="font-space font-bold text-slate-300 block mb-1">Tanggal</label>
+                  <label className="font-space font-bold text-slate-700 block mb-1">Tanggal</label>
                   <input
                     type="date"
                     required
                     value={tourDate}
                     onChange={(e) => setTourDate(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white"
+                    className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-800 focus:border-amber-500 outline-none"
                   />
                 </div>
                 <div>
-                  <label className="font-space font-bold text-slate-300 block mb-1">Jam</label>
+                  <label className="font-space font-bold text-slate-700 block mb-1">Jam</label>
                   <input
                     type="text"
                     value={tourTime}
                     onChange={(e) => setTourTime(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white"
+                    className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-800 focus:border-amber-500 outline-none"
                   />
                 </div>
                 <div>
-                  <label className="font-space font-bold text-amber-400 block mb-1">Total Deal (Rp) *</label>
+                  <label className="font-space font-bold text-amber-700 block mb-1">Total Deal (Rp) *</label>
                   <input
                     type="number"
                     required
                     value={totalAmount}
                     onChange={(e) => setTotalAmount(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono font-bold"
+                    className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-mono font-bold focus:border-amber-500 outline-none"
                   />
                 </div>
                 <div>
-                  <label className="font-space font-bold text-emerald-400 block mb-1">DP Masuk (Rp) *</label>
+                  <label className="font-space font-bold text-emerald-700 block mb-1">DP Masuk (Rp) *</label>
                   <input
                     type="number"
                     required
                     value={dpAmount}
                     onChange={(e) => setDpAmount(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-emerald-400 font-mono font-bold"
+                    className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-emerald-700 font-mono font-bold focus:border-amber-500 outline-none"
                   />
                 </div>
               </div>
 
-              <button
-                type="submit"
-                disabled={submittingManual}
-                className="amber-gradient-btn px-6 py-3 rounded-xl font-space font-bold text-xs text-slate-950 cursor-pointer"
-              >
-                {submittingManual ? 'Menyimpan...' : '✓ SIMPAN & TERBITKAN TIKET'}
-              </button>
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={submittingManual}
+                  className="px-6 py-2.5 rounded-xl font-space font-bold text-xs bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-xs cursor-pointer transition-colors"
+                >
+                  {submittingManual ? 'Menyimpan...' : '✓ SIMPAN & TERBITKAN TIKET'}
+                </button>
+              </div>
             </form>
           </div>
         )}
 
+        {/* ============================================================== */}
         {/* TAB 4: KELOLA GALERI & VIDEO INSTAGRAM */}
+        {/* ============================================================== */}
         {activeTab === 'gallery' && (
-          <div className="space-y-8 animate-in fade-in">
-            {/* Form Tambah Item Galeri / Video */}
-            <div className="bg-slate-900/80 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-xl space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-7 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="font-space font-bold text-xs text-pink-400 uppercase tracking-wider">
-                      KONTEN MEDIA & SOSIAL
+                    <span className="font-space font-bold text-xs text-pink-600 uppercase tracking-wider">
+                      MEDIA & INSTAGRAM
                     </span>
-                    <span className="px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-400 border border-pink-500/30 text-[10px] font-space font-bold">
-                      LIVE ON HOMEPAGE
+                    <span className="px-2 py-0.5 rounded-full bg-pink-50 text-pink-700 border border-pink-200 text-[10px] font-space font-bold">
+                      LIVE DI HOMEPAGE
                     </span>
                   </div>
-                  <h3 className="font-outfit font-black text-2xl text-white">
+                  <h3 className="font-outfit font-black text-xl text-slate-900">
                     Kelola Galeri & Video Instagram
                   </h3>
-                  <p className="font-work text-xs text-slate-400 mt-1">
-                    Tambahkan foto dokumentasi terbaru atau tautkan video reels dari akun Instagram agar muncul langsung di halaman utama website.
+                  <p className="font-work text-xs text-slate-500 mt-0.5">
+                    Tambahkan foto dokumentasi terbaru atau tautkan video reels Instagram agar tampil di beranda.
                   </p>
                 </div>
 
-                {/* Toggle Mode: Foto vs Video Reels */}
-                <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-950 border border-slate-800 self-start sm:self-auto">
+                {/* Form Type Toggle */}
+                <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 border border-slate-200 self-start sm:self-auto">
                   <button
                     type="button"
                     onClick={() => {
                       setGalleryFormType('PHOTO');
                       setGalleryCategory('JEEP ACTION');
                     }}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-space font-bold transition-all cursor-pointer ${
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-space font-bold transition-all cursor-pointer ${
                       galleryFormType === 'PHOTO'
-                        ? 'bg-amber-500 text-slate-950 shadow-md'
-                        : 'text-slate-400 hover:text-white'
+                        ? 'bg-amber-500 text-slate-950 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    <Camera className="w-4 h-4" />
+                    <Camera className="w-3.5 h-3.5" />
                     <span>+ Tambah Foto</span>
                   </button>
 
@@ -1146,24 +1328,23 @@ export default function AdminDashboardPage() {
                       setGalleryFormType('INSTAGRAM_VIDEO');
                       setGalleryCategory('VIDEO REELS');
                     }}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-space font-bold transition-all cursor-pointer ${
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-space font-bold transition-all cursor-pointer ${
                       galleryFormType === 'INSTAGRAM_VIDEO'
-                        ? 'bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 text-white shadow-md'
-                        : 'text-slate-400 hover:text-white'
+                        ? 'bg-purple-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    <Instagram className="w-4 h-4" />
-                    <span>+ Tautkan Video IG</span>
+                    <Instagram className="w-3.5 h-3.5" />
+                    <span>+ Video IG Reels</span>
                   </button>
                 </div>
               </div>
 
               {/* Form Input */}
-              <form onSubmit={handleAddGalleryItem} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-work">
-                  {/* Judul Konten */}
+              <form onSubmit={handleAddGalleryItem} className="space-y-4 text-xs font-work">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="font-space font-bold text-slate-300 block mb-1">
+                    <label className="font-space font-bold text-slate-700 block mb-1">
                       {galleryFormType === 'PHOTO' ? 'Judul Foto *' : 'Judul Video Reels *'}
                     </label>
                     <input
@@ -1171,327 +1352,195 @@ export default function AdminDashboardPage() {
                       required
                       value={galleryTitle}
                       onChange={(e) => setGalleryTitle(e.target.value)}
-                      placeholder={
-                        galleryFormType === 'PHOTO'
-                          ? 'Contoh: Rombongan Sunrise Bunker Kaliadem'
-                          : 'Contoh: Aksi Manuver Cipratan Air Kali Kuning'
-                      }
-                      className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-amber-400 outline-none"
+                      placeholder="Contoh: Rombongan Sunrise Bunker Kaliadem"
+                      className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-800 focus:border-amber-500 outline-none"
                     />
                   </div>
 
-                  {/* Kategori */}
                   <div>
-                    <label className="font-space font-bold text-slate-300 block mb-1">
-                      Kategori Tampilan
-                    </label>
+                    <label className="font-space font-bold text-slate-700 block mb-1">Kategori Tampilan</label>
                     <select
                       value={galleryCategory}
                       onChange={(e) => setGalleryCategory(e.target.value as GalleryCategory)}
-                      className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-amber-400 outline-none"
+                      className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-800 focus:border-amber-500 outline-none"
                     >
-                      {galleryFormType === 'PHOTO' ? (
-                        <>
-                          <option value="JEEP ACTION">JEEP ACTION (Manuver & Lintasan)</option>
-                          <option value="DESTINASI">DESTINASI (Spot Wisata & Alam)</option>
-                          <option value="WISATAWAN">WISATAWAN (Tamu & Rombongan)</option>
-                        </>
-                      ) : (
-                        <>
-                          <option value="VIDEO REELS">VIDEO REELS (Cuplikan Aksi Instagram)</option>
-                          <option value="JEEP ACTION">JEEP ACTION (Video Lintasan)</option>
-                          <option value="WISATAWAN">WISATAWAN (Video Testimoni Tamu)</option>
-                        </>
-                      )}
+                      <option value="JEEP ACTION">JEEP ACTION</option>
+                      <option value="DESTINASI">DESTINASI</option>
+                      <option value="WISATAWAN">WISATAWAN</option>
+                      <option value="VIDEO REELS">VIDEO REELS</option>
                     </select>
                   </div>
+                </div>
 
-                  {/* URL Media / URL Instagram */}
-                  <div className="md:col-span-2">
-                    <label className="font-space font-bold text-slate-300 block mb-1">
-                      {galleryFormType === 'PHOTO'
-                        ? 'URL / Link File Gambar *'
-                        : 'Link URL Video Instagram (Reels / Post) *'}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="font-space font-bold text-slate-700 block mb-1">
+                      URL Gambar / Thumbnail *
                     </label>
                     <input
                       type="text"
                       required
                       value={galleryMediaUrl}
-                      onChange={(e) => {
-                        setGalleryMediaUrl(e.target.value);
-                        if (galleryFormType === 'INSTAGRAM_VIDEO') {
-                          setGalleryInstagramUrl(e.target.value);
-                        }
-                      }}
-                      placeholder={
-                        galleryFormType === 'PHOTO'
-                          ? 'Contoh: /images/img_1_577_jeep_traversing_off-road_track.png atau https://.../foto.jpg'
-                          : 'Contoh: https://www.instagram.com/reel/C-xyz12345/ atau https://www.instagram.com/p/...'
-                      }
-                      className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-amber-400 outline-none font-mono"
+                      onChange={(e) => setGalleryMediaUrl(e.target.value)}
+                      placeholder="/images/foto.png atau https://..."
+                      className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-800 font-mono focus:border-amber-500 outline-none"
                     />
-                    <span className="text-[11px] text-slate-500 mt-1 block">
-                      {galleryFormType === 'PHOTO'
-                        ? 'Bisa menggunakan path gambar lokal di folder public/images atau link URL online.'
-                        : 'Masukkan tautan langsung video reel Instagram publik.'}
-                    </span>
                   </div>
 
-                  {/* Fields Khusus Video Instagram */}
-                  {galleryFormType === 'INSTAGRAM_VIDEO' && (
-                    <>
-                      <div>
-                        <label className="font-space font-bold text-slate-300 block mb-1">
-                          URL Cover Thumbnail (Gambar Depan)
-                        </label>
-                        <input
-                          type="text"
-                          value={galleryThumbnailUrl}
-                          onChange={(e) => setGalleryThumbnailUrl(e.target.value)}
-                          placeholder="/images/img_1_581_manuver_air_kali_kuning.png"
-                          className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-amber-400 outline-none font-mono"
-                        />
-                        <span className="text-[11px] text-slate-500 mt-1 block">
-                          Jika dikosongkan, akan menggunakan cover default.
-                        </span>
-                      </div>
-
-                      <div>
-                        <label className="font-space font-bold text-slate-300 block mb-1">
-                          Caption / Keterangan Singkat
-                        </label>
-                        <input
-                          type="text"
-                          value={galleryCaption}
-                          onChange={(e) => setGalleryCaption(e.target.value)}
-                          placeholder="Sensasi cipratan air ekstrem bersama tim driver profesional! 🔥"
-                          className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-amber-400 outline-none"
-                        />
-                      </div>
-                    </>
-                  )}
+                  <div>
+                    <label className="font-space font-bold text-slate-700 block mb-1">
+                      Tautan Instagram Post / Reels (Opsional)
+                    </label>
+                    <input
+                      type="url"
+                      value={galleryInstagramUrl}
+                      onChange={(e) => setGalleryInstagramUrl(e.target.value)}
+                      placeholder="https://instagram.com/reel/..."
+                      className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-800 font-mono focus:border-amber-500 outline-none"
+                    />
+                  </div>
                 </div>
 
-                <div className="pt-2 flex items-center justify-end">
+                <div>
                   <button
                     type="submit"
                     disabled={gallerySubmitting}
-                    className={`px-6 py-3 rounded-xl font-space font-bold text-xs flex items-center gap-2 cursor-pointer shadow-lg transition-all ${
-                      galleryFormType === 'PHOTO'
-                        ? 'amber-gradient-btn text-slate-950'
-                        : 'bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 text-white hover:brightness-110'
-                    }`}
+                    className="px-5 py-2.5 rounded-xl font-space font-bold text-xs bg-amber-500 hover:bg-amber-600 text-slate-950 cursor-pointer shadow-xs transition-colors"
                   >
-                    {galleryFormType === 'PHOTO' ? <Camera className="w-4 h-4" /> : <Instagram className="w-4 h-4" />}
-                    <span>
-                      {gallerySubmitting
-                        ? 'Menyimpan...'
-                        : galleryFormType === 'PHOTO'
-                        ? '✓ Simpan & Terbitkan Foto'
-                        : '✓ Tautkan Video Instagram'}
-                    </span>
+                    {gallerySubmitting ? 'Menyimpan...' : '+ Tambahkan ke Galeri'}
                   </button>
                 </div>
               </form>
             </div>
 
-            {/* List Galeri Saat Ini */}
-            <div className="bg-slate-900/80 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-xl space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
-                <div>
-                  <h4 className="font-outfit font-black text-xl text-white flex items-center gap-2">
-                    <span>Daftar Konten Galeri & Video</span>
-                    <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 text-xs font-mono font-bold">
-                      {galleryItems.length} Konten
-                    </span>
-                  </h4>
-                  <p className="font-work text-xs text-slate-400 mt-1">
-                    Semua foto dan video di bawah ini langsung tampil di website pada bagian "Momen Seru di Jalur Merapi".
-                  </p>
-                </div>
-
-                <button
-                  onClick={fetchGalleryItems}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-space font-bold transition-colors cursor-pointer self-start sm:self-auto"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${galleryLoading ? 'animate-spin' : ''}`} />
-                  <span>Refresh Media</span>
-                </button>
-              </div>
+            {/* Gallery Grid List */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-7 space-y-4">
+              <h4 className="font-outfit font-black text-lg text-slate-900">
+                Item Galeri Aktif ({galleryItems.length})
+              </h4>
 
               {galleryLoading ? (
-                <div className="text-center py-12 text-slate-500 font-work text-sm">
-                  Memuat konten galeri...
+                <div className="py-8 text-center text-slate-400 font-work text-xs">
+                  Memuat item galeri...
                 </div>
               ) : galleryItems.length === 0 ? (
-                <div className="text-center py-12 bg-slate-950/50 rounded-2xl border border-slate-800 text-slate-500 font-work text-sm">
-                  Belum ada konten galeri. Gunakan form di atas untuk menambahkan foto atau video IG.
+                <div className="py-8 text-center text-slate-400 font-work text-xs">
+                  Belum ada item galeri. Tambahkan lewat formulir di atas.
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                   {galleryItems.map((item) => {
-                    const isVideo = item.type === 'INSTAGRAM_VIDEO' || item.category === 'VIDEO REELS';
-                    const cover = isVideo ? (item.thumbnailUrl || item.mediaUrl) : item.mediaUrl;
-
+                    const isVideo = item.type === 'INSTAGRAM_VIDEO';
                     return (
                       <div
                         key={item.id}
-                        className="bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden flex flex-col group hover:border-slate-700 transition-all shadow-md"
+                        className="bg-white rounded-xl border border-slate-200 overflow-hidden flex flex-col group hover:shadow-md transition-all"
                       >
-                        {/* Image / Thumbnail Preview */}
-                        <div className="relative h-40 w-full bg-slate-900 overflow-hidden">
-                          {cover ? (
-                            <img
-                              src={cover}
-                              alt={item.title}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-slate-700">
-                              <Instagram className="w-12 h-12" />
-                            </div>
-                          )}
-
-                          {/* Badge Tipe */}
+                        <div className="relative h-36 bg-slate-100 overflow-hidden">
+                          <img
+                            src={item.thumbnailUrl || item.mediaUrl}
+                            alt={item.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
                           <div className="absolute top-2 left-2">
                             {isVideo ? (
-                              <span className="flex items-center gap-1 bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 text-white font-space font-bold text-[9px] px-2 py-0.5 rounded shadow">
+                              <span className="flex items-center gap-1 bg-purple-600 text-white font-space font-bold text-[9px] px-2 py-0.5 rounded shadow-xs">
                                 <Instagram className="w-3 h-3" />
                                 REELS
                               </span>
                             ) : (
-                              <span className="bg-slate-950/80 backdrop-blur-sm text-white font-space font-bold text-[9px] px-2 py-0.5 rounded">
+                              <span className="bg-white/90 text-slate-800 font-space font-bold text-[9px] px-2 py-0.5 rounded shadow-xs">
                                 {item.category}
                               </span>
                             )}
                           </div>
-
-                          {/* Play overlay for video */}
-                          {isVideo && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                              <div className="w-10 h-10 rounded-full bg-pink-600/90 text-white flex items-center justify-center shadow-lg">
-                                <Play className="w-4 h-4 ml-0.5 fill-white" />
-                              </div>
-                            </div>
-                          )}
                         </div>
 
-                        {/* Info & Action */}
-                        <div className="p-3.5 flex-1 flex flex-col justify-between space-y-3 font-work">
+                        <div className="p-3 flex-1 flex flex-col justify-between space-y-2">
                           <div>
-                            <h5 className="font-outfit font-bold text-white text-xs line-clamp-1">
+                            <h5 className="font-outfit font-bold text-slate-900 text-xs line-clamp-1">
                               {item.title}
                             </h5>
-                            {item.caption && (
-                              <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
-                                {item.caption}
-                              </p>
-                            )}
-                            <span className="text-[10px] text-slate-500 mt-1 block font-mono truncate">
-                              {item.mediaUrl}
-                            </span>
                           </div>
 
-                          <div className="flex items-center justify-between pt-2 border-t border-slate-900">
+                          <div className="flex items-center justify-between pt-2 border-t border-slate-100">
                             <a
                               href={item.instagramUrl || item.mediaUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex items-center gap-1 text-[11px] font-space font-bold text-amber-400 hover:text-amber-300 transition-colors"
+                              className="text-[11px] font-space font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1"
                             >
-                              <span>Buka</span>
+                              <span>Lihat</span>
                               <ExternalLink className="w-3 h-3" />
                             </a>
 
                             <button
                               onClick={() => handleDeleteGalleryItem(item.id)}
-                              className="p-1.5 rounded-lg bg-red-950/40 text-red-400 hover:bg-red-900/60 hover:text-white transition-colors cursor-pointer"
+                              className="p-1 rounded text-slate-400 hover:text-red-600 transition-colors cursor-pointer"
                               title="Hapus Media"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </div>
-
                       </div>
                     );
                   })}
                 </div>
               )}
             </div>
-
           </div>
         )}
 
+        {/* ============================================================== */}
         {/* TAB 5: KELOLA SLIDESHOW BANNER BERANDA (MAKSIMAL 5 FOTO) */}
+        {/* ============================================================== */}
         {activeTab === 'hero' && (
-          <div className="space-y-8 animate-in fade-in">
-            {/* Header & Status Card */}
-            <div className="bg-slate-900/80 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-xl space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-7 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="font-space font-bold text-xs text-amber-400 uppercase tracking-wider">
-                      HERO BANNER CAROUSEL
+                    <span className="font-space font-bold text-xs text-amber-600 uppercase tracking-wider">
+                      SLIDESHOW LATAR BERANDA
                     </span>
                     <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-space font-black uppercase border ${
                       heroSlides.length >= MAX_HERO_SLIDES
-                        ? 'bg-red-500/20 text-red-400 border-red-500/30'
-                        : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                        ? 'bg-amber-100 text-amber-800 border-amber-300'
+                        : 'bg-emerald-100 text-emerald-800 border-emerald-300'
                     }`}>
                       KUOTA: {heroSlides.length} / {MAX_HERO_SLIDES} FOTO
                     </span>
                   </div>
-                  <h3 className="font-outfit font-black text-2xl text-white">
-                    Kelola Slideshow Foto Beranda
+                  <h3 className="font-outfit font-black text-xl text-slate-900">
+                    Kelola Foto Slideshow Beranda
                   </h3>
-                  <p className="font-work text-xs text-slate-400 mt-1 max-w-2xl">
-                    Foto-foto di bawah ini ditampilkan sebagai latar belakang utama beranda yang dapat <strong>bergeser (slide show) kanan dan kiri</strong> secara otomatis maupun manual oleh pengunjung.
+                  <p className="font-work text-xs text-slate-500 mt-0.5 max-w-2xl">
+                    Foto-foto di bawah ini ditampilkan sebagai latar belakang utama beranda yang dapat <strong>bergeser (slide show) kanan dan kiri</strong> secara otomatis maupun manual dengan batas ketat <strong>maksimal 5 foto</strong>.
                   </p>
                 </div>
-
-                <button
-                  onClick={fetchHeroSlides}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-space font-bold transition-colors cursor-pointer self-start sm:self-auto"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${heroLoading ? 'animate-spin' : ''}`} />
-                  <span>Refresh Slide</span>
-                </button>
               </div>
 
-              {/* Notice if maximum 5 slides reached */}
+              {/* Form Tambah Slide (Hanya aktif jika belum 5 foto) */}
               {heroSlides.length >= MAX_HERO_SLIDES ? (
-                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3 text-xs text-amber-200">
-                  <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-amber-200 text-amber-900 flex items-center justify-center shrink-0">
+                    <Sliders className="w-4 h-4" />
+                  </div>
                   <div>
-                    <strong className="text-white block font-space font-bold uppercase mb-0.5">
-                      Batas Maksimal 5 Foto Tercapai
-                    </strong>
-                    <span>
-                      Slideshow beranda telah memiliki 5 foto aktif. Jika ingin mengganti atau menambahkan foto baru, silakan hapus salah satu foto pada daftar di bawah terlebih dahulu.
-                    </span>
+                    <h5 className="font-outfit font-bold text-sm text-amber-900">
+                      Kuota Maksimal 5 Foto Telah Penuh
+                    </h5>
+                    <p className="font-work text-xs text-amber-800 mt-0.5">
+                      Slideshow beranda telah memiliki 5 foto aktif. Jika ingin mengganti foto, silakan hapus salah satu foto pada daftar di bawah terlebih dahulu.
+                    </p>
                   </div>
                 </div>
               ) : (
-                /* Form Tambah Slide Baru */
-                <form onSubmit={handleAddHeroSlide} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-work">
+                <form onSubmit={handleAddHeroSlide} className="space-y-4 text-xs font-work">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="font-space font-bold text-slate-300 block mb-1">
-                        Judul / Label Foto *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={newSlideTitle}
-                        onChange={(e) => setNewSlideTitle(e.target.value)}
-                        placeholder="Contoh: Pesona Sunrise Gunung Merapi Fajar"
-                        className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-amber-400 outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="font-space font-bold text-slate-300 block mb-1">
+                      <label className="font-space font-bold text-slate-700 block mb-1">
                         URL / Path Gambar Foto *
                       </label>
                       <input
@@ -1499,69 +1548,32 @@ export default function AdminDashboardPage() {
                         required
                         value={newSlideImage}
                         onChange={(e) => setNewSlideImage(e.target.value)}
-                        placeholder="/images/img_1_6_merapi_jeep_adventure_golden_hour_experience.png"
-                        className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white focus:border-amber-400 outline-none font-mono"
+                        placeholder="Contoh: /images/nama_foto.png atau link https://..."
+                        className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-800 font-mono focus:border-amber-500 outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="font-space font-bold text-slate-700 block mb-1">
+                        Judul Slide (Opsional)
+                      </label>
+                      <input
+                        type="text"
+                        value={newSlideTitle}
+                        onChange={(e) => setNewSlideTitle(e.target.value)}
+                        placeholder="Contoh: Golden Sunrise Merapi Experience"
+                        className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-800 focus:border-amber-500 outline-none"
                       />
                     </div>
                   </div>
 
-                  {/* Preset Quick Fill Recommendations */}
-                  <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
-                    <span className="text-[11px] font-space font-bold text-slate-400 block mb-1.5 uppercase">
-                      💡 Pilih Cepat dari Foto Dokumentasi Tersedia:
-                    </span>
-                    <div className="flex flex-wrap gap-2 text-[11px]">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setNewSlideImage('/images/img_1_6_merapi_jeep_adventure_golden_hour_experience.png');
-                          setNewSlideTitle('Golden Sunrise Merapi Experience');
-                        }}
-                        className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono transition-colors cursor-pointer"
-                      >
-                        + Sunrise Golden Hour
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setNewSlideImage('/images/img_1_53_jeep_cruising_through_volcanic_off-road_track_mount_merapi.png');
-                          setNewSlideTitle('Jalur Lava & Offroad Track');
-                        }}
-                        className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono transition-colors cursor-pointer"
-                      >
-                        + Jalur Lava Track
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setNewSlideImage('/images/img_1_193_paket_medium_kali_kuning_splashing_water.png');
-                          setNewSlideTitle('Manuver Basah Kali Kuning');
-                        }}
-                        className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono transition-colors cursor-pointer"
-                      >
-                        + Splash Kali Kuning
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setNewSlideImage('/images/img_1_372_bunker_kaliadem.png');
-                          setNewSlideTitle('Bunker Kaliadem Megah');
-                        }}
-                        className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono transition-colors cursor-pointer"
-                      >
-                        + Bunker Kaliadem
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-end pt-1">
+                  <div>
                     <button
                       type="submit"
                       disabled={slideSubmitting}
-                      className="amber-gradient-btn px-6 py-2.5 rounded-xl font-space font-bold text-xs text-slate-950 flex items-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20"
+                      className="px-5 py-2.5 rounded-xl font-space font-bold text-xs bg-amber-500 hover:bg-amber-600 text-slate-950 cursor-pointer shadow-xs transition-colors"
                     >
-                      <Sliders className="w-4 h-4" />
-                      <span>{slideSubmitting ? 'Menyimpan...' : `+ Tambahkan Foto ke Slideshow (${heroSlides.length}/5)`}</span>
+                      {slideSubmitting ? 'Menyimpan...' : `+ Tambahkan Foto ke Slideshow (${heroSlides.length}/5)`}
                     </button>
                   </div>
                 </form>
@@ -1569,68 +1581,57 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* List 5 Slides Saat Ini */}
-            <div className="bg-slate-900/80 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-slate-800 shadow-xl space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
-                <div>
-                  <h4 className="font-outfit font-black text-xl text-white flex items-center gap-2">
-                    <span>Urutan Slide yang Aktif di Beranda</span>
-                    <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-amber-400 text-xs font-mono font-bold">
-                      {heroSlides.length} dari {MAX_HERO_SLIDES} Slide
-                    </span>
-                  </h4>
-                  <p className="font-work text-xs text-slate-400 mt-1">
-                    Pengunjung dapat menggeser foto ini menggunakan tombol panah kiri/kanan atau menunggu slide berganti otomatis.
-                  </p>
-                </div>
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-7 space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="font-outfit font-black text-lg text-slate-900">
+                  Urutan Slide yang Aktif di Beranda ({heroSlides.length}/{MAX_HERO_SLIDES})
+                </h4>
               </div>
 
               {heroLoading ? (
-                <div className="text-center py-12 text-slate-500 font-work text-sm">
+                <div className="py-8 text-center text-slate-400 font-work text-xs">
                   Memuat data slide...
                 </div>
               ) : heroSlides.length === 0 ? (
-                <div className="text-center py-12 bg-slate-950/50 rounded-2xl border border-slate-800 text-slate-500 font-work text-sm">
-                  Belum ada slide aktif. Tambahkan foto melalui form di atas.
+                <div className="py-8 text-center text-slate-400 font-work text-xs">
+                  Belum ada slide aktif.
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                   {heroSlides.map((slide, idx) => (
                     <div
                       key={slide.id || idx}
-                      className="bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden flex flex-col group hover:border-amber-500/50 transition-all shadow-md"
+                      className="bg-white rounded-xl border border-slate-200 overflow-hidden flex flex-col group hover:shadow-md hover:border-amber-400 transition-all"
                     >
-                      {/* Thumbnail Preview */}
-                      <div className="relative h-44 w-full bg-slate-900 overflow-hidden">
+                      <div className="relative h-40 bg-slate-100 overflow-hidden">
                         <img
                           src={slide.imageUrl}
                           alt={slide.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
-                        {/* Slide Number Badge */}
                         <div className="absolute top-2 left-2">
-                          <span className="bg-slate-950/90 backdrop-blur-sm text-amber-400 font-space font-black text-[10px] px-2.5 py-0.5 rounded-md border border-amber-500/40 shadow">
+                          <span className="bg-white/95 text-slate-900 font-space font-black text-[10px] px-2 py-0.5 rounded shadow-xs border border-slate-200">
                             SLIDE #{idx + 1}
                           </span>
                         </div>
                       </div>
 
-                      {/* Info & Action */}
-                      <div className="p-3.5 flex-1 flex flex-col justify-between space-y-3 font-work">
+                      <div className="p-3 flex-1 flex flex-col justify-between space-y-2">
                         <div>
-                          <h5 className="font-outfit font-bold text-white text-xs line-clamp-1">
+                          <h5 className="font-outfit font-bold text-slate-900 text-xs line-clamp-1">
                             {slide.title || `Slide ${idx + 1}`}
                           </h5>
-                          <span className="text-[10px] text-slate-500 mt-1 block font-mono truncate">
+                          <span className="text-[10px] text-slate-400 block font-mono truncate mt-0.5">
                             {slide.imageUrl}
                           </span>
                         </div>
 
-                        <div className="flex items-center justify-between pt-2 border-t border-slate-900">
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-100">
                           <a
                             href={slide.imageUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-[11px] font-space font-bold text-amber-400 hover:text-amber-300 transition-colors"
+                            className="text-[11px] font-space font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1"
                           >
                             <span>Lihat</span>
                             <ExternalLink className="w-3 h-3" />
@@ -1638,116 +1639,109 @@ export default function AdminDashboardPage() {
 
                           <button
                             onClick={() => handleDeleteHeroSlide(slide.id)}
-                            className="p-1.5 rounded-lg bg-red-950/40 text-red-400 hover:bg-red-900/60 hover:text-white transition-colors cursor-pointer"
+                            className="p-1 rounded text-slate-400 hover:text-red-600 transition-colors cursor-pointer"
                             title="Hapus Slide"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>
-
                     </div>
                   ))}
                 </div>
               )}
             </div>
-
           </div>
         )}
 
       </main>
 
-      {/* APPROVAL MODAL (When admin clicks "Review & Approve Deal Ini" on a client booking) */}
+      {/* ============================================================== */}
+      {/* APPROVAL MODAL (Light Clean Theme) */}
+      {/* ============================================================== */}
       {approvingBooking && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-in fade-in">
-          <div className="relative bg-slate-900 border border-slate-800 rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="relative bg-white border border-slate-200 rounded-2xl max-w-xl w-full p-6 sm:p-7 shadow-2xl space-y-5 my-8 text-slate-800">
             
             <button
               onClick={() => setApprovingBooking(null)}
-              className="absolute top-5 right-5 p-2 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+              className="absolute top-5 right-5 p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
 
-            {/* Header */}
             <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-space font-bold uppercase mb-2">
-                <span>VERIFIKASI & SETUJUI BOOKING</span>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 text-xs font-space font-bold uppercase mb-1">
+                <span>KONFIRMASI BOOKING DEAL</span>
               </div>
-              <h3 className="font-outfit font-black text-2xl text-white">
+              <h3 className="font-outfit font-black text-2xl text-slate-900">
                 Approve Booking & Terbitkan Invoice
               </h3>
-              <p className="font-work text-xs text-slate-400 mt-1">
-                Data client sudah terisi otomatis. Masukkan nominal harga deal yang telah disepakati di WhatsApp dan DP yang diterima.
+              <p className="font-work text-xs text-slate-500 mt-0.5">
+                Masukkan total harga kesepakatan WhatsApp dan DP yang sudah dibayarkan tamu.
               </p>
             </div>
 
-            {/* Client Pre-filled summary */}
-            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2 text-xs font-work">
-              <div className="flex justify-between py-1 border-b border-slate-800/80">
-                <span className="text-slate-400">Kode Booking:</span>
-                <span className="font-mono font-bold text-amber-400">{approvingBooking.bookingCode}</span>
+            {/* Client info summary */}
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5 text-xs font-work">
+              <div className="flex justify-between py-1 border-b border-slate-200">
+                <span className="text-slate-500">Kode Booking:</span>
+                <span className="font-mono font-bold text-amber-700">{approvingBooking.bookingCode}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-800/80">
-                <span className="text-slate-400">Nama Tamu:</span>
-                <span className="font-bold text-white">{approvingBooking.customerName}</span>
+              <div className="flex justify-between py-1 border-b border-slate-200">
+                <span className="text-slate-500">Nama Tamu:</span>
+                <span className="font-bold text-slate-900">{approvingBooking.customerName}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-800/80">
-                <span className="text-slate-400">Nomor WhatsApp:</span>
-                <span className="font-mono text-slate-300">{approvingBooking.customerPhone}</span>
+              <div className="flex justify-between py-1 border-b border-slate-200">
+                <span className="text-slate-500">No WhatsApp:</span>
+                <span className="font-mono text-slate-700">{approvingBooking.customerPhone}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-800/80">
-                <span className="text-slate-400">Paket Wisata:</span>
-                <span className="font-bold text-amber-400">{approvingBooking.packageName}</span>
+              <div className="flex justify-between py-1 border-b border-slate-200">
+                <span className="text-slate-500">Paket Wisata:</span>
+                <span className="font-bold text-amber-700">{approvingBooking.packageName}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-800/80">
-                <span className="text-slate-400">Jadwal & Peserta:</span>
-                <span className="text-white">{approvingBooking.tourDate} ({approvingBooking.tourTime}) • {approvingBooking.paxCount} Org ({approvingBooking.jeepCount} Jeep)</span>
+              <div className="flex justify-between py-1">
+                <span className="text-slate-500">Jadwal & Peserta:</span>
+                <span className="text-slate-800">{approvingBooking.tourDate} ({approvingBooking.tourTime}) • {approvingBooking.paxCount} Org ({approvingBooking.jeepCount} Jeep)</span>
               </div>
-              {approvingBooking.notes && (
-                <div className="pt-1">
-                  <span className="text-slate-400 block mb-0.5">Catatan Tamu:</span>
-                  <span className="text-slate-300 italic">"{approvingBooking.notes}"</span>
-                </div>
-              )}
             </div>
 
-            {/* Admin Input Deal Fields */}
-            <div className="space-y-4 font-work text-xs">
+            {/* Admin Deal Fields */}
+            <div className="space-y-3.5 font-work text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="font-space font-bold text-amber-400 block mb-1 uppercase">
-                    Total Harga Deal di WA (Rp) *
+                  <label className="font-space font-bold text-slate-700 block mb-1">
+                    Total Kesepakatan di WA (Rp) *
                   </label>
                   <input
                     type="number"
                     required
                     value={dealTotal}
                     onChange={(e) => setDealTotal(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono font-bold text-sm focus:outline-none focus:border-amber-500"
+                    className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 font-mono font-bold text-sm focus:outline-none focus:border-amber-500"
                   />
                 </div>
 
                 <div>
-                  <label className="font-space font-bold text-emerald-400 block mb-1 uppercase">
-                    DP yang Sudah Ditransfer (Rp) *
+                  <label className="font-space font-bold text-emerald-700 block mb-1">
+                    DP yang Ditransfer (Rp) *
                   </label>
                   <input
                     type="number"
                     required
                     value={dealDp}
                     onChange={(e) => setDealDp(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-emerald-400 font-mono font-bold text-sm focus:outline-none focus:border-amber-500"
+                    className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-emerald-700 font-mono font-bold text-sm focus:outline-none focus:border-amber-500"
                   />
                 </div>
               </div>
 
-              {/* Sisa auto-calculate */}
-              <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex justify-between items-center font-mono">
-                <span className="text-slate-400 text-xs font-space font-semibold uppercase">
+              {/* Sisa Auto-Calculate */}
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 flex justify-between items-center font-mono">
+                <span className="text-amber-900 text-xs font-space font-semibold uppercase">
                   Sisa Pelunasan di Basecamp:
                 </span>
-                <span className="font-black text-amber-400 text-sm">
+                <span className="font-black text-amber-800 text-sm">
                   {Math.max(0, Number(dealTotal) - Number(dealDp)) === 0
                     ? 'LUNAS (Rp 0)'
                     : `Rp ${(Math.max(0, Number(dealTotal) - Number(dealDp))).toLocaleString('id-ID')}`}
@@ -1756,13 +1750,13 @@ export default function AdminDashboardPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="font-space font-bold text-slate-300 block mb-1 uppercase">
+                  <label className="font-space font-bold text-slate-700 block mb-1">
                     Metode Pembayaran DP
                   </label>
                   <select
                     value={dealPaymentMethod}
                     onChange={(e) => setDealPaymentMethod(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-slate-800 focus:border-amber-500 outline-none"
                   >
                     <option value="Transfer BCA">Transfer BCA</option>
                     <option value="Transfer Mandiri">Transfer Mandiri</option>
@@ -1773,7 +1767,7 @@ export default function AdminDashboardPage() {
                 </div>
 
                 <div>
-                  <label className="font-space font-bold text-slate-300 block mb-1 uppercase">
+                  <label className="font-space font-bold text-slate-700 block mb-1">
                     Driver & No. Polisi
                   </label>
                   <input
@@ -1781,7 +1775,7 @@ export default function AdminDashboardPage() {
                     value={dealDriver}
                     onChange={(e) => setDealDriver(e.target.value)}
                     placeholder="Mas Agus (AB 1928 MJ)"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-slate-800 focus:border-amber-500 outline-none"
                   />
                 </div>
               </div>
@@ -1792,7 +1786,7 @@ export default function AdminDashboardPage() {
               <button
                 type="button"
                 onClick={() => setApprovingBooking(null)}
-                className="w-1/3 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-space font-bold"
+                className="w-1/3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-space font-bold cursor-pointer"
               >
                 Batal
               </button>
@@ -1801,7 +1795,7 @@ export default function AdminDashboardPage() {
                 type="button"
                 disabled={approvingLoading}
                 onClick={handleConfirmApproval}
-                className="amber-gradient-btn flex-1 py-3 rounded-xl font-space font-black text-xs text-slate-950 flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20"
+                className="flex-1 py-2.5 rounded-xl font-space font-black text-xs bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>{approvingLoading ? 'Memproses...' : '✓ SETUJUI & TERBITKAN TIKET'}</span>
