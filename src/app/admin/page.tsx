@@ -34,11 +34,21 @@ import {
   CheckCheck,
   Archive,
   Settings,
-  ChevronDown
+  ChevronDown,
+  Type,
+  EyeOff,
+  Edit3,
+  Package,
+  Check,
+  MapPin,
+  Layers,
+  Info,
+  Image as ImageIcon
 } from 'lucide-react';
 import { Booking } from '@/types/booking';
 import { GalleryItem, GalleryCategory } from '@/types/gallery';
 import { HeroSlide, MAX_HERO_SLIDES } from '@/types/heroSlide';
+import { TourPackage } from '@/types/package';
 import { isClientAuthenticated, clearClientSession } from '@/lib/adminAuth';
 
 export default function AdminDashboardPage() {
@@ -53,16 +63,36 @@ export default function AdminDashboardPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [pendingSearch, setPendingSearch] = useState('');
   
   // Navigation active tab: 'dashboard' is the default overview
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'pending' | 'approved' | 'settled' | 'gallery' | 'hero'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'pending' | 'approved' | 'settled' | 'gallery' | 'hero' | 'collage' | 'packages'>('dashboard');
+
+  // Admin Packages CRUD states
+  const [adminPackages, setAdminPackages] = useState<TourPackage[]>([]);
+
+  // Collage Section (Intro) states
+  const [collageHeadline, setCollageHeadline] = useState('');
+  const [collageDescription, setCollageDescription] = useState('');
+  const [collageImage1, setCollageImage1] = useState('');
+  const [collageImage1Caption, setCollageImage1Caption] = useState('');
+  const [collageImage2, setCollageImage2] = useState('');
+  const [collageImage2Caption, setCollageImage2Caption] = useState('');
+  const [collageSaving, setCollageSaving] = useState(false);
 
   // Hero Slideshow States (Max 5 photos)
   const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([]);
   const [heroLoading, setHeroLoading] = useState(false);
   const [newSlideImage, setNewSlideImage] = useState('');
   const [newSlideTitle, setNewSlideTitle] = useState('');
+  const [newSlideShowText, setNewSlideShowText] = useState(true);
+  const [newSlideHeadline, setNewSlideHeadline] = useState('');
+  const [newSlideSubheadline, setNewSlideSubheadline] = useState('');
+  const [newSlideShowButton, setNewSlideShowButton] = useState(true);
   const [slideSubmitting, setSlideSubmitting] = useState(false);
+  const [editingSlide, setEditingSlide] = useState<HeroSlide | null>(null);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [togglingSlideId, setTogglingSlideId] = useState<string | null>(null);
 
   // Gallery Management States
   const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
@@ -128,14 +158,37 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const fetchPackages = async () => {
+    try {
+      const res = await fetch('/api/packages');
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setAdminPackages(json.data);
+      }
+    } catch (err) {
+      console.error('Error fetching packages:', err);
+    }
+  };
+
   useEffect(() => {
     if (isAuthenticated) {
       fetchBookings();
+      fetchPackages();
     }
   }, [search, isAuthenticated]);
 
   // Filter bookings by status & payment status
   const pendingBookings = bookings.filter((b) => b.approvalStatus === 'PENDING');
+  const filteredPendingBookings = pendingBookings.filter((b) => {
+    if (!pendingSearch.trim()) return true;
+    const q = pendingSearch.toLowerCase().trim();
+    return (
+      (b.bookingCode && b.bookingCode.toLowerCase().includes(q)) ||
+      (b.customerName && b.customerName.toLowerCase().includes(q)) ||
+      (b.customerPhone && b.customerPhone.toLowerCase().includes(q)) ||
+      (b.packageName && b.packageName.toLowerCase().includes(q))
+    );
+  });
   const approvedBookings = bookings.filter((b) => b.approvalStatus === 'APPROVED');
 
   // 1. Jadwal Tur Aktif (Belum Lunas / Masih ada sisa yang harus dibayar di Basecamp)
@@ -422,6 +475,10 @@ export default function AdminDashboardPage() {
         body: JSON.stringify({
           imageUrl: newSlideImage,
           title: newSlideTitle || 'Slide Foto Beranda',
+          showText: newSlideShowText,
+          headline: newSlideHeadline,
+          subheadline: newSlideSubheadline,
+          showButton: newSlideShowButton,
         }),
       });
 
@@ -430,6 +487,10 @@ export default function AdminDashboardPage() {
         alert('Foto slide berhasil ditambahkan ke beranda!');
         setNewSlideImage('');
         setNewSlideTitle('');
+        setNewSlideShowText(true);
+        setNewSlideHeadline('');
+        setNewSlideSubheadline('');
+        setNewSlideShowButton(true);
         fetchHeroSlides();
       } else {
         alert('Gagal: ' + (json.error || 'Terjadi kesalahan'));
@@ -439,6 +500,66 @@ export default function AdminDashboardPage() {
       alert('Terjadi kesalahan jaringan.');
     } finally {
       setSlideSubmitting(false);
+    }
+  };
+
+  const handleToggleSlideText = async (slide: HeroSlide) => {
+    const nextStatus = slide.showText === false ? true : false;
+    setTogglingSlideId(slide.id);
+    try {
+      // Optimistic update
+      setHeroSlides((prev) =>
+        prev.map((s) => (s.id === slide.id ? { ...s, showText: nextStatus } : s))
+      );
+
+      const res = await fetch(`/api/hero-slides/${slide.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ showText: nextStatus }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        alert('Gagal mengubah pengaturan font: ' + (json.error || ''));
+        fetchHeroSlides();
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Terjadi kendala jaringan saat memperbarui status font.');
+      fetchHeroSlides();
+    } finally {
+      setTogglingSlideId(null);
+    }
+  };
+
+  const handleSaveEditSlide = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSlide) return;
+    setEditSubmitting(true);
+    try {
+      const res = await fetch(`/api/hero-slides/${editingSlide.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageUrl: editingSlide.imageUrl,
+          title: editingSlide.title,
+          showText: editingSlide.showText !== false,
+          headline: editingSlide.headline || '',
+          subheadline: editingSlide.subheadline || '',
+          showButton: editingSlide.showButton !== false,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setEditingSlide(null);
+        fetchHeroSlides();
+      } else {
+        alert('Gagal menyimpan perubahan slide: ' + (json.error || ''));
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Terjadi kesalahan jaringan.');
+    } finally {
+      setEditSubmitting(false);
     }
   };
 
@@ -693,13 +814,13 @@ export default function AdminDashboardPage() {
               type="button"
               onClick={() => setIsSettingsOpen(!isSettingsOpen)}
               className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-space text-xs font-semibold transition-all cursor-pointer text-left ${
-                activeTab === 'gallery' || activeTab === 'hero'
+                activeTab === 'gallery' || activeTab === 'hero' || activeTab === 'collage' || activeTab === 'packages'
                   ? 'bg-amber-50 text-amber-900 font-bold border border-amber-200/80 shadow-xs'
                   : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
               <div className="flex items-center gap-3 min-w-0">
-                <div className={`p-1.5 rounded-lg ${activeTab === 'gallery' || activeTab === 'hero' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}`}>
+                <div className={`p-1.5 rounded-lg ${activeTab === 'gallery' || activeTab === 'hero' || activeTab === 'collage' || activeTab === 'packages' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}`}>
                   <Settings className="w-4 h-4 shrink-0" />
                 </div>
                 <div className="truncate">
@@ -757,8 +878,46 @@ export default function AdminDashboardPage() {
                     {heroSlides.length}/{MAX_HERO_SLIDES}
                   </span>
                 </button>
+
+                {/* Submenu 3: Konten Intro (Collage) */}
+                <button
+                  type="button"
+                  onClick={() => handleSelectTab('collage')}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg font-space text-xs transition-all cursor-pointer text-left ${
+                    activeTab === 'collage'
+                      ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <Type className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">Konten Intro</span>
+                  </div>
+                </button>
+
+                {/* Submenu 4: Paket Wisata */}
+                <button
+                  type="button"
+                  onClick={() => handleSelectTab('packages')}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg font-space text-xs transition-all cursor-pointer text-left ${
+                    activeTab === 'packages'
+                      ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <Package className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">Paket Wisata</span>
+                  </div>
+                  <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                    activeTab === 'packages' ? 'bg-amber-600 text-slate-950' : 'bg-amber-100 text-amber-800'
+                  }`}>
+                    {adminPackages.length}
+                  </span>
+                </button>
               </div>
             )}
+
           </div>
 
           <div className="pt-4 px-3 py-1.5 text-[11px] font-space font-bold uppercase tracking-wider text-slate-400">
@@ -826,6 +985,8 @@ export default function AdminDashboardPage() {
                 {activeTab === 'settled' && 'Riwayat Selesai & Lunas'}
                 {activeTab === 'gallery' && 'Kelola Galeri & IG'}
                 {activeTab === 'hero' && 'Slideshow Beranda'}
+                {activeTab === 'collage' && 'Konten Intro (Beranda)'}
+                {activeTab === 'packages' && 'Paket Wisata'}
               </span>
             </div>
             <h1 className="font-outfit font-black text-2xl sm:text-3xl text-slate-900 tracking-tight">
@@ -835,6 +996,8 @@ export default function AdminDashboardPage() {
               {activeTab === 'settled' && 'Riwayat & Arsip Booking Lunas (Selesai 100%)'}
               {activeTab === 'gallery' && 'Kelola Galeri & Video Reels Instagram'}
               {activeTab === 'hero' && 'Kelola Foto Slideshow Beranda'}
+              {activeTab === 'collage' && 'Kelola Teks & Gambar Seksi Intro'}
+              {activeTab === 'packages' && 'Kelola Paket Wisata'}
             </h1>
           </div>
 
@@ -1111,12 +1274,12 @@ export default function AdminDashboardPage() {
         {/* TAB 1: PERMINTAAN BOOKING DARI CLIENT (MENUNGGU APPROVAL) */}
         {/* ============================================================== */}
         {activeTab === 'pending' && (
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 sm:p-7 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 sm:p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
               <div>
                 <h3 className="font-outfit font-black text-xl text-slate-900 flex flex-wrap items-center gap-2.5">
                   <span>Permintaan Masuk dari Tamu Website</span>
-                  <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-space font-bold border border-amber-200 flex items-center gap-1.5">
+                  <span className="px-3 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-space font-bold border border-amber-200 flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                     {pendingBookings.length} Menunggu Konfirmasi
                   </span>
@@ -1130,7 +1293,7 @@ export default function AdminDashboardPage() {
                 <button
                   type="button"
                   onClick={() => setShowManualModal(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-space font-bold text-xs shadow-xs hover:shadow transition-all cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-space font-bold text-xs shadow-xs hover:shadow transition-all cursor-pointer"
                 >
                   <PlusCircle className="w-4 h-4 shrink-0" />
                   <span>+ Booking Manual</span>
@@ -1138,11 +1301,47 @@ export default function AdminDashboardPage() {
 
                 <button
                   onClick={fetchBookings}
-                  className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors cursor-pointer"
+                  className="p-2 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors cursor-pointer"
                   title="Segarkan Data"
                 >
                   <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-amber-500' : ''}`} />
                 </button>
+              </div>
+            </div>
+
+            {/* Search Bar Kode Booking / Nama / HP */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-50/80 p-2.5 sm:p-3 rounded-xl border border-slate-200/80">
+              <div className="relative flex-1 max-w-md">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Cari kode tiket (cth: NJA-2026), nama tamu, atau no HP..."
+                  value={pendingSearch}
+                  onChange={(e) => setPendingSearch(e.target.value)}
+                  className="w-full pl-9 pr-8 py-1.5 rounded-lg bg-white border border-slate-300 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all font-work"
+                />
+                {pendingSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setPendingSearch('')}
+                    className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 text-xs cursor-pointer font-bold"
+                    title="Hapus pencarian"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 text-xs font-space text-slate-500 self-end sm:self-center">
+                {pendingSearch ? (
+                  <span>
+                    Ditemukan <strong className="text-amber-600 font-bold">{filteredPendingBookings.length}</strong> dari {pendingBookings.length} data
+                  </span>
+                ) : (
+                  <span>
+                    Total: <strong className="text-slate-800 font-bold">{pendingBookings.length}</strong> permintaan
+                  </span>
+                )}
               </div>
             </div>
 
@@ -1170,72 +1369,89 @@ export default function AdminDashboardPage() {
                   </button>
                 </div>
               </div>
+            ) : filteredPendingBookings.length === 0 ? (
+              <div className="py-12 text-center text-slate-500 space-y-3 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto">
+                  <Search className="w-5 h-5" />
+                </div>
+                <div className="space-y-1">
+                  <p className="font-outfit font-bold text-base text-slate-800">
+                    Tidak Ditemukan Hasil untuk "{pendingSearch}"
+                  </p>
+                  <p className="font-work text-xs text-slate-400">
+                    Periksa kembali penulisan kode booking, nama tamu, atau nomor HP.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPendingSearch('')}
+                  className="px-3 py-1.5 text-xs font-space font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 rounded-lg transition-colors cursor-pointer"
+                >
+                  Reset Pencarian
+                </button>
+              </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {pendingBookings.map((b) => (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
+                {filteredPendingBookings.map((b) => (
                   <div
                     key={b.id}
-                    className="rounded-2xl bg-white border border-slate-200 hover:border-amber-400 shadow-xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group"
+                    className="rounded-xl bg-white border border-slate-200 hover:border-amber-400 shadow-xs hover:shadow transition-all flex flex-col justify-between overflow-hidden group"
                   >
-                    {/* Top Header Strip */}
-                    <div className="px-5 py-3.5 bg-gradient-to-r from-amber-50/70 via-slate-50/80 to-white border-b border-slate-100 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-amber-800 text-xs bg-amber-100/80 px-2.5 py-0.5 rounded-md border border-amber-300/80">
+                    {/* Top Header Strip - Compact */}
+                    <div className="px-3.5 py-2 bg-gradient-to-r from-amber-50/80 via-slate-50 to-white border-b border-slate-100 flex items-center justify-between gap-1.5">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-mono font-bold text-amber-800 text-[11px] bg-amber-100/90 px-2 py-0.5 rounded border border-amber-300/80 shrink-0">
                           {b.bookingCode}
                         </span>
-                        <div className="flex items-center gap-1 text-[11px] font-space text-slate-400">
-                          <Clock className="w-3 h-3 text-slate-400" />
+                        <div className="flex items-center gap-1 text-[10px] font-space text-slate-400 truncate">
+                          <Clock className="w-3 h-3 text-slate-400 shrink-0" />
                           <span>{new Date(b.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB</span>
                         </div>
                       </div>
 
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-space font-bold uppercase bg-amber-100 text-amber-900 border border-amber-300">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-space font-bold uppercase bg-amber-100/90 text-amber-900 border border-amber-300 shrink-0">
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                        <span>Menunggu Approval</span>
+                        <span>Menunggu</span>
                       </span>
                     </div>
 
-                    {/* Card Body */}
-                    <div className="p-5 space-y-4 flex-1">
+                    {/* Card Body - Compact & Clean */}
+                    <div className="p-3 space-y-2.5 flex-1 flex flex-col justify-between">
                       {/* Customer Info */}
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-11 h-11 rounded-xl bg-amber-100/70 border border-amber-200 flex items-center justify-center font-outfit font-black text-amber-800 text-base shrink-0">
-                            {b.customerName ? b.customerName.charAt(0).toUpperCase() : 'T'}
-                          </div>
-                          <div>
-                            <h4 className="font-outfit font-black text-lg text-slate-900 leading-snug">
-                              {b.customerName}
-                            </h4>
-                            <div className="flex items-center gap-2 mt-1">
-                              <a
-                                href={`https://wa.me/${b.customerPhone.replace(/^0/, '62').replace(/[^0-9]/g, '')}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200 transition-colors"
-                                title="Klik untuk chat WhatsApp"
-                              >
-                                <Phone className="w-3 h-3 text-emerald-600" />
-                                <span>{b.customerPhone}</span>
-                              </a>
-                            </div>
-                          </div>
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center font-outfit font-black text-amber-800 text-xs shrink-0">
+                          {b.customerName ? b.customerName.charAt(0).toUpperCase() : 'T'}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-outfit font-bold text-sm text-slate-900 truncate leading-tight">
+                            {b.customerName}
+                          </h4>
+                          <a
+                            href={`https://wa.me/${b.customerPhone.replace(/^0/, '62').replace(/[^0-9]/g, '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] font-mono font-medium text-emerald-700 hover:text-emerald-800 mt-0.5"
+                            title="Klik untuk chat WhatsApp"
+                          >
+                            <Phone className="w-2.5 h-2.5 text-emerald-600" />
+                            <span>{b.customerPhone}</span>
+                          </a>
                         </div>
                       </div>
 
-                      {/* Trip Details Grid */}
-                      <div className="grid grid-cols-2 gap-2.5 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs">
-                        <div className="space-y-0.5">
-                          <span className="text-[10px] font-space font-semibold uppercase tracking-wider text-slate-400 block">
-                            Paket Pilihan
+                      {/* Trip Details Grid - Compact 2x2 */}
+                      <div className="grid grid-cols-2 gap-1.5 p-2 rounded-lg bg-slate-50 border border-slate-200/70 text-[11px]">
+                        <div className="min-w-0">
+                          <span className="text-[9px] font-space font-semibold uppercase tracking-wider text-slate-400 block leading-tight">
+                            Paket
                           </span>
                           <span className="font-bold text-slate-800 block truncate" title={b.packageName}>
                             {b.packageName}
                           </span>
                         </div>
 
-                        <div className="space-y-0.5">
-                          <span className="text-[10px] font-space font-semibold uppercase tracking-wider text-slate-400 block">
+                        <div className="min-w-0">
+                          <span className="text-[9px] font-space font-semibold uppercase tracking-wider text-slate-400 block leading-tight">
                             Jadwal Tur
                           </span>
                           <span className="font-bold text-slate-800 block truncate">
@@ -1243,62 +1459,62 @@ export default function AdminDashboardPage() {
                           </span>
                         </div>
 
-                        <div className="space-y-0.5 pt-2 border-t border-slate-200/70">
-                          <span className="text-[10px] font-space font-semibold uppercase tracking-wider text-slate-400 block">
-                            Jumlah Peserta
+                        <div className="min-w-0 pt-1 border-t border-slate-200/60">
+                          <span className="text-[9px] font-space font-semibold uppercase tracking-wider text-slate-400 block leading-tight">
+                            Peserta
                           </span>
                           <span className="font-bold text-slate-800">
                             {b.paxCount} Orang
                           </span>
                         </div>
 
-                        <div className="space-y-0.5 pt-2 border-t border-slate-200/70">
-                          <span className="text-[10px] font-space font-semibold uppercase tracking-wider text-slate-400 block">
-                            Estimasi Armada
+                        <div className="min-w-0 pt-1 border-t border-slate-200/60">
+                          <span className="text-[9px] font-space font-semibold uppercase tracking-wider text-slate-400 block leading-tight">
+                            Armada
                           </span>
-                          <span className="font-bold text-amber-800 bg-amber-100/90 px-2 py-0.5 rounded border border-amber-200 text-[11px] inline-block">
+                          <span className="font-bold text-amber-800 bg-amber-100/90 px-1.5 py-0.5 rounded border border-amber-200 text-[10px] inline-block">
                             {b.jeepCount} Unit Jeep
                           </span>
                         </div>
                       </div>
 
-                      {/* Notes from guest */}
+                      {/* Notes from guest (if any) */}
                       {b.notes && (
-                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-600 text-xs flex items-start gap-2">
-                          <span className="text-amber-500 font-bold shrink-0 text-base leading-none">“</span>
-                          <p className="italic leading-relaxed text-[11px] text-slate-600">
+                        <div className="p-1.5 rounded-lg bg-amber-50/40 border border-amber-200/50 text-slate-600 text-[10px] flex items-start gap-1">
+                          <span className="text-amber-500 font-bold shrink-0 leading-none">“</span>
+                          <p className="italic leading-tight text-slate-600 line-clamp-2">
                             {b.notes}
                           </p>
                         </div>
                       )}
                     </div>
 
-                    {/* Action buttons */}
-                    <div className="px-5 py-3.5 bg-slate-50/60 border-t border-slate-100 flex items-center gap-2">
+                    {/* Action buttons - Compact */}
+                    <div className="px-3 py-2 bg-slate-50/80 border-t border-slate-100 flex items-center gap-1.5">
                       <button
                         onClick={() => handleOpenApproveModal(b)}
-                        className="flex-1 py-2.5 px-3 rounded-xl font-space font-bold text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center justify-center gap-2 shadow-xs hover:shadow transition-all cursor-pointer"
+                        className="flex-1 py-1.5 px-2.5 rounded-lg font-space font-bold text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center justify-center gap-1.5 shadow-xs hover:shadow transition-all cursor-pointer"
                       >
-                        <CheckSquare className="w-4 h-4 shrink-0" />
-                        <span>REVIEW & APPROVE DEAL</span>
+                        <CheckSquare className="w-3.5 h-3.5 shrink-0" />
+                        <span>Review & Approve</span>
                       </button>
 
                       <a
                         href={`https://wa.me/${b.customerPhone.replace(/^0/, '62').replace(/[^0-9]/g, '')}?text=Halo%20Kak%20${encodeURIComponent(b.customerName)},%20kami%20dari%20Merapi%20Jeep%20Adventure%20melihat%20reservasi%20Kakak%20untuk%20${encodeURIComponent(b.packageName)}%20di%20tanggal%20${b.tourDate}.%20Boleh%20kami%20bantu%20konfirmasi%20kesepakatan%20harga%20dan%20DP?`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors shrink-0"
+                        className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors shrink-0"
                         title="Chat WA Pelanggan"
                       >
-                        <Phone className="w-4 h-4" />
+                        <Phone className="w-3.5 h-3.5" />
                       </a>
 
                       <button
                         onClick={() => handleDelete(b.id)}
-                        className="p-2.5 rounded-xl bg-white hover:bg-red-50 text-slate-400 hover:text-red-600 border border-slate-200 hover:border-red-200 transition-colors shrink-0 cursor-pointer"
+                        className="p-1.5 rounded-lg bg-white hover:bg-red-50 text-slate-400 hover:text-red-600 border border-slate-200 hover:border-red-200 transition-colors shrink-0 cursor-pointer"
                         title="Tolak / Hapus"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
@@ -1922,7 +2138,7 @@ export default function AdminDashboardPage() {
 
                     <div>
                       <label className="font-space font-bold text-slate-700 block mb-1">
-                        Judul Slide (Opsional)
+                        Label / Judul Slide (Opsional)
                       </label>
                       <input
                         type="text"
@@ -1932,6 +2148,76 @@ export default function AdminDashboardPage() {
                         className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-800 focus:border-amber-500 outline-none"
                       />
                     </div>
+                  </div>
+
+                  {/* Toggle Font / Teks Per Slide */}
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Type className="w-4 h-4 text-amber-600" />
+                          <span className="font-space font-bold text-slate-800 text-xs">
+                            Pengaturan Font & Teks Beranda di Slide ini
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 font-work mt-1 max-w-xl">
+                          {newSlideShowText
+                            ? 'Teks judul & subjudul website akan ditampilkan. Matikan jika gambar banner sudah memiliki font/teks desain sendiri agar tidak saling bertumpuk.'
+                            : 'Font & teks beranda dinonaktifkan untuk slide ini. Gambar banner custom akan tampil bersih dan jernih tanpa tertutup tulisan.'}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        <span className={`text-[11px] font-space font-bold px-2 py-0.5 rounded ${
+                          newSlideShowText ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'
+                        }`}>
+                          {newSlideShowText ? 'Font: AKTIF' : 'Font: MATI'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setNewSlideShowText(!newSlideShowText)}
+                          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                            newSlideShowText ? 'bg-amber-500' : 'bg-slate-300'
+                          }`}
+                        >
+                          <span
+                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                              newSlideShowText ? 'translate-x-5' : 'translate-x-0'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Jika Font ON: Bolehkan kustomisasi teks khusus untuk slide ini */}
+                    {newSlideShowText && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-200">
+                        <div>
+                          <label className="font-space font-semibold text-slate-600 text-[11px] block mb-1">
+                            Judul Utama Custom (Opsional)
+                          </label>
+                          <input
+                            type="text"
+                            value={newSlideHeadline}
+                            onChange={(e) => setNewSlideHeadline(e.target.value)}
+                            placeholder="Kosongkan jika ingin memakai judul standar"
+                            className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-800 text-xs focus:border-amber-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="font-space font-semibold text-slate-600 text-[11px] block mb-1">
+                            Subjudul / Deskripsi Custom (Opsional)
+                          </label>
+                          <input
+                            type="text"
+                            value={newSlideSubheadline}
+                            onChange={(e) => setNewSlideSubheadline(e.target.value)}
+                            placeholder="Kosongkan jika ingin memakai deskripsi standar"
+                            className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-800 text-xs focus:border-amber-500 outline-none"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -1949,10 +2235,15 @@ export default function AdminDashboardPage() {
 
             {/* List 5 Slides Saat Ini */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-7 space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="font-outfit font-black text-lg text-slate-900">
-                  Urutan Slide yang Aktif di Beranda ({heroSlides.length}/{MAX_HERO_SLIDES})
-                </h4>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h4 className="font-outfit font-black text-lg text-slate-900">
+                    Urutan Slide yang Aktif di Beranda ({heroSlides.length}/{MAX_HERO_SLIDES})
+                  </h4>
+                  <p className="font-work text-xs text-slate-500 mt-0.5">
+                    Klik tombol <strong>&ldquo;Matikan / Hidupkan Font&rdquo;</strong> untuk mengatur apakah teks beranda ditampilkan pada masing-masing slide secara instan.
+                  </p>
+                </div>
               </div>
 
               {heroLoading ? (
@@ -1964,53 +2255,121 @@ export default function AdminDashboardPage() {
                   Belum ada slide aktif.
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
                   {heroSlides.map((slide, idx) => (
                     <div
                       key={slide.id || idx}
                       className="bg-white rounded-xl border border-slate-200 overflow-hidden flex flex-col group hover:shadow-md hover:border-amber-400 transition-all"
                     >
-                      <div className="relative h-40 bg-slate-100 overflow-hidden">
+                      {/* Image Preview & Badge */}
+                      <div className="relative h-44 bg-slate-100 overflow-hidden">
                         <img
                           src={slide.imageUrl}
                           alt={slide.title}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
-                        <div className="absolute top-2 left-2">
-                          <span className="bg-white/95 text-slate-900 font-space font-black text-[10px] px-2 py-0.5 rounded shadow-xs border border-slate-200">
-                            SLIDE #{idx + 1}
+                        <div className="absolute top-2 left-2 flex items-center gap-1.5">
+                          <span className="bg-slate-950/85 text-white font-space font-black text-[10px] px-2 py-0.5 rounded shadow-xs">
+                            #{idx + 1}
+                          </span>
+                          <span className={`font-space font-bold text-[9px] px-2 py-0.5 rounded shadow-xs ${
+                            slide.showText !== false
+                              ? 'bg-emerald-600 text-white'
+                              : 'bg-violet-700 text-white'
+                          }`}>
+                            {slide.showText !== false ? 'FONT AKTIF' : 'FONT MATI'}
                           </span>
                         </div>
                       </div>
 
-                      <div className="p-3 flex-1 flex flex-col justify-between space-y-2">
-                        <div>
+                      {/* Content details */}
+                      <div className="p-3.5 flex-1 flex flex-col justify-between space-y-3">
+                        <div className="space-y-1.5">
                           <h5 className="font-outfit font-bold text-slate-900 text-xs line-clamp-1">
                             {slide.title || `Slide ${idx + 1}`}
                           </h5>
-                          <span className="text-[10px] text-slate-400 block font-mono truncate mt-0.5">
+                          <span className="text-[10px] text-slate-400 block font-mono truncate">
                             {slide.imageUrl}
                           </span>
+
+                          {/* Font status pill */}
+                          <div className={`p-2 rounded-lg text-[10px] font-work border ${
+                            slide.showText !== false
+                              ? 'bg-emerald-50/70 text-emerald-800 border-emerald-200/80'
+                              : 'bg-violet-50/70 text-violet-800 border-violet-200/80'
+                          }`}>
+                            {slide.showText !== false ? (
+                              <div className="flex items-center gap-1.5">
+                                <Type className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                <span>Teks Beranda: <strong>Muncul di slide ini</strong></span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5">
+                                <EyeOff className="w-3.5 h-3.5 text-violet-600 shrink-0" />
+                                <span>Banner Custom: <strong>Font dinonaktifkan</strong></span>
+                              </div>
+                            )}
+                          </div>
                         </div>
 
-                        <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                          <a
-                            href={slide.imageUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[11px] font-space font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1"
-                          >
-                            <span>Lihat</span>
-                            <ExternalLink className="w-3 h-3" />
-                          </a>
-
+                        {/* Quick 1-Click Toggle Button for Font ON/OFF */}
+                        <div className="pt-2 border-t border-slate-100 space-y-2">
                           <button
-                            onClick={() => handleDeleteHeroSlide(slide.id)}
-                            className="p-1 rounded text-slate-400 hover:text-red-600 transition-colors cursor-pointer"
-                            title="Hapus Slide"
+                            type="button"
+                            onClick={() => handleToggleSlideText(slide)}
+                            disabled={togglingSlideId === slide.id}
+                            className={`w-full py-1.5 px-2 rounded-lg font-space font-bold text-[10px] cursor-pointer flex items-center justify-center gap-1.5 transition-all ${
+                              slide.showText !== false
+                                ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                                : 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-black shadow-xs'
+                            }`}
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            {togglingSlideId === slide.id ? (
+                              <span>Menyimpan...</span>
+                            ) : slide.showText !== false ? (
+                              <>
+                                <EyeOff className="w-3 h-3 text-slate-500" />
+                                <span>Matikan Font di Slide Ini</span>
+                              </>
+                            ) : (
+                              <>
+                                <Type className="w-3 h-3 text-slate-950" />
+                                <span>Hidupkan Font di Slide Ini</span>
+                              </>
+                            )}
                           </button>
+
+                          {/* Action Links: Edit, View, Delete */}
+                          <div className="flex items-center justify-between text-slate-500 text-[11px] pt-1">
+                            <button
+                              type="button"
+                              onClick={() => setEditingSlide(slide)}
+                              className="font-space font-semibold text-slate-600 hover:text-amber-600 flex items-center gap-1 cursor-pointer"
+                              title="Edit Pengaturan Slide"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                              <span>Edit</span>
+                            </button>
+
+                            <a
+                              href={slide.imageUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-space font-semibold text-slate-600 hover:text-amber-600 flex items-center gap-1"
+                            >
+                              <span>Lihat</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteHeroSlide(slide.id)}
+                              className="p-1 rounded text-slate-400 hover:text-red-600 transition-colors cursor-pointer"
+                              title="Hapus Slide"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -2021,7 +2380,6 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-      </main>
 
       {/* ============================================================== */}
       {/* MODAL INPUT BOOKING MANUAL (KASIR / WA DIRECT) */}
@@ -2085,10 +2443,9 @@ export default function AdminDashboardPage() {
                     onChange={(e) => setPackageName(e.target.value)}
                     className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:border-amber-500 outline-none"
                   >
-                    <option value="Paket Short">Paket Short</option>
-                    <option value="Paket Medium (Best Seller)">Paket Medium (Best Seller)</option>
-                    <option value="Paket Long">Paket Long</option>
-                    <option value="Paket Sunrise">Paket Sunrise</option>
+                    {(adminPackages.length > 0 ? adminPackages : [{id:'s1',title:'Paket Short'},{id:'m1',title:'Paket Medium (Best Seller)'},{id:'l1',title:'Paket Long'},{id:'sr1',title:'Paket Sunrise'}]).map(p => (
+                      <option key={p.id} value={p.title}>{p.title}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -2409,6 +2766,1165 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
+      {/* ============================================================== */}
+      {/* MODAL EDIT SLIDE BERANDA & PENGATURAN FONT */}
+      {/* ============================================================== */}
+      {editingSlide && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="relative bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 sm:p-7 shadow-2xl space-y-5 my-8 text-slate-800">
+            <button
+              type="button"
+              onClick={() => setEditingSlide(null)}
+              className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 text-xs font-space font-bold uppercase mb-1">
+                <Edit3 className="w-3.5 h-3.5 text-amber-700" />
+                <span>PENGATURAN SLIDE #{editingSlide.order}</span>
+              </div>
+              <h3 className="font-outfit font-black text-xl text-slate-900">
+                Edit Slide & Pengaturan Font
+              </h3>
+              <p className="font-work text-xs text-slate-500 mt-0.5">
+                Sesuaikan gambar dan pilih apakah teks/font beranda ingin dihidupkan atau dimatikan untuk slide ini.
+              </p>
+            </div>
+
+            <form onSubmit={handleSaveEditSlide} className="space-y-4 text-xs font-work">
+              <div>
+                <label className="font-space font-bold text-slate-700 block mb-1">
+                  URL / Path Gambar Foto *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editingSlide.imageUrl}
+                  onChange={(e) => setEditingSlide({ ...editingSlide, imageUrl: e.target.value })}
+                  className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-800 font-mono focus:border-amber-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="font-space font-bold text-slate-700 block mb-1">
+                  Label / Judul Slide
+                </label>
+                <input
+                  type="text"
+                  value={editingSlide.title}
+                  onChange={(e) => setEditingSlide({ ...editingSlide, title: e.target.value })}
+                  placeholder="Contoh: Golden Sunrise Merapi Experience"
+                  className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-800 focus:border-amber-500 outline-none"
+                />
+              </div>
+
+              {/* Toggle Font / Teks */}
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <label className="font-space font-bold text-slate-800 text-xs flex items-center gap-1.5 cursor-pointer">
+                      <Type className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Tampilkan Font & Teks di Slide ini</span>
+                    </label>
+                    <p className="text-[11px] text-slate-500 font-work mt-0.5">
+                      {editingSlide.showText !== false
+                        ? 'Font & teks beranda aktif.'
+                        : 'Font dimatikan. Gambar banner custom tampil bersih tanpa tertutup teks.'}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEditingSlide({
+                        ...editingSlide,
+                        showText: editingSlide.showText === false ? true : false,
+                      })
+                    }
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      editingSlide.showText !== false ? 'bg-amber-500' : 'bg-slate-300'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                        editingSlide.showText !== false ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {editingSlide.showText !== false && (
+                  <div className="space-y-3 pt-2 border-t border-slate-200">
+                    <div>
+                      <label className="font-space font-semibold text-slate-600 text-[11px] block mb-1">
+                        Judul Utama Custom (Opsional)
+                      </label>
+                      <input
+                        type="text"
+                        value={editingSlide.headline || ''}
+                        onChange={(e) => setEditingSlide({ ...editingSlide, headline: e.target.value })}
+                        placeholder="Kosongkan jika pakai judul standar"
+                        className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-800 text-xs focus:border-amber-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-space font-semibold text-slate-600 text-[11px] block mb-1">
+                        Subjudul / Deskripsi Custom (Opsional)
+                      </label>
+                      <input
+                        type="text"
+                        value={editingSlide.subheadline || ''}
+                        onChange={(e) => setEditingSlide({ ...editingSlide, subheadline: e.target.value })}
+                        placeholder="Kosongkan jika pakai deskripsi standar"
+                        className="w-full p-2 rounded-lg bg-white border border-slate-200 text-slate-800 text-xs focus:border-amber-500 outline-none"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Preview Gambar Kecil */}
+              {editingSlide.imageUrl && (
+                <div className="relative h-28 rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
+                  <img
+                    src={editingSlide.imageUrl}
+                    alt="Preview"
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                    <span className="text-white font-space font-bold text-xs bg-black/60 px-3 py-1 rounded-full">
+                      Preview Gambar
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-2 flex items-center justify-end gap-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingSlide(null)}
+                  className="px-5 py-2.5 rounded-xl font-space font-bold text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={editSubmitting}
+                  className="px-6 py-2.5 rounded-xl font-space font-bold text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-xs cursor-pointer transition-all hover:shadow"
+                >
+                  {editSubmitting ? 'Menyimpan...' : '✓ SIMPAN PERUBAHAN'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+        {/* ============================================================== */}
+        {/* TAB 6: KELOLA KONTEN INTRO (COLLAGE SECTION) */}
+        {/* ============================================================== */}
+        {activeTab === 'collage' && (
+          <CollageAdminPanel
+            headline={collageHeadline}
+            setHeadline={setCollageHeadline}
+            description={collageDescription}
+            setDescription={setCollageDescription}
+            image1={collageImage1}
+            setImage1={setCollageImage1}
+            image1Caption={collageImage1Caption}
+            setImage1Caption={setCollageImage1Caption}
+            image2={collageImage2}
+            setImage2={setCollageImage2}
+            image2Caption={collageImage2Caption}
+            setImage2Caption={setCollageImage2Caption}
+            saving={collageSaving}
+            onLoad={(d) => {
+              setCollageHeadline(d.headline);
+              setCollageDescription(d.description);
+              setCollageImage1(d.image1);
+              setCollageImage1Caption(d.image1Caption);
+              setCollageImage2(d.image2);
+              setCollageImage2Caption(d.image2Caption);
+            }}
+            onSave={async () => {
+              setCollageSaving(true);
+              try {
+                const res = await fetch('/api/collage', {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    headline: collageHeadline,
+                    description: collageDescription,
+                    image1: collageImage1,
+                    image1Caption: collageImage1Caption,
+                    image2: collageImage2,
+                    image2Caption: collageImage2Caption,
+                  }),
+                });
+                const json = await res.json();
+                if (json.success) alert('Konten intro berhasil disimpan!');
+                else alert('Gagal menyimpan: ' + json.error);
+              } catch { alert('Gagal menyimpan.'); }
+              finally { setCollageSaving(false); }
+            }}
+          />
+        )}
+
+        {/* ============================================================== */}
+        {/* TAB 7: KELOLA PAKET WISATA */}
+        {/* ============================================================== */}
+        {activeTab === 'packages' && (
+          <PackagesAdminPanel
+            packages={adminPackages}
+            onRefresh={fetchPackages}
+          />
+        )}
+
+      </main>
+
     </div>
   );
 }
+
+
+
+/* ─── Collage Admin Panel Component ─────────────────────────────── */
+
+interface CollageAdminPanelProps {
+  headline: string;
+  setHeadline: (v: string) => void;
+  description: string;
+  setDescription: (v: string) => void;
+  image1: string;
+  setImage1: (v: string) => void;
+  image1Caption: string;
+  setImage1Caption: (v: string) => void;
+  image2: string;
+  setImage2: (v: string) => void;
+  image2Caption: string;
+  setImage2Caption: (v: string) => void;
+  saving: boolean;
+  onLoad: (d: { headline: string; description: string; image1: string; image1Caption: string; image2: string; image2Caption: string }) => void;
+  onSave: () => Promise<void>;
+}
+
+function CollageAdminPanel({
+  headline, setHeadline,
+  description, setDescription,
+  image1, setImage1,
+  image1Caption, setImage1Caption,
+  image2, setImage2,
+  image2Caption, setImage2Caption,
+  saving, onLoad, onSave,
+}: CollageAdminPanelProps) {
+  const [loaded, setLoaded] = React.useState(false);
+
+  React.useEffect(() => {
+    if (loaded) return;
+    fetch('/api/collage')
+      .then(r => r.json())
+      .then(res => {
+        if (res.success && res.data) {
+          onLoad(res.data);
+          setLoaded(true);
+        }
+      })
+      .catch(() => {});
+  }, [loaded, onLoad]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!headline.trim() || !description.trim() || !image1.trim()) {
+      alert('Judul, deskripsi, dan foto utama wajib diisi!');
+      return;
+    }
+    await onSave();
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Main Grid: Left Editor & Right Live Preview */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+        {/* LEFT COLUMN: Form Controls (7 cols) */}
+        <div className="xl:col-span-7 space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            
+            {/* Card 1: Text Section */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              {/* Card Header */}
+              <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100">
+                <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                  <Type className="w-3.5 h-3.5 text-amber-600" />
+                </div>
+                <div>
+                  <span className="font-space font-black text-xs text-slate-900 uppercase tracking-wider">
+                    1. Teks Narasi Intro
+                  </span>
+                  <p className="text-[10px] text-slate-400 font-work mt-0.5">
+                    Judul & paragraf sambutan yang tampil di beranda
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-5">
+              {/* Headline */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-space font-bold text-xs text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    Judul Utama (Headline)
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
+                    headline.length > 50 ? 'text-amber-700 bg-amber-50' : 'text-slate-400'
+                  }`}>
+                    {headline.length} karakter
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  required
+                  value={headline}
+                  onChange={e => setHeadline(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/80 font-outfit font-bold text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:bg-white focus:border-amber-300 transition-all placeholder:font-normal placeholder:text-slate-400"
+                  placeholder="Contoh: Petualangan Menembus Batas di Kaki Gunung Merapi"
+                />
+              </div>
+
+              {/* Description */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-space font-bold text-xs text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    Deskripsi / Paragraf Sambutan
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
+                    description.length > 200 ? 'text-amber-700 bg-amber-50' : 'text-slate-400'
+                  }`}>
+                    {description.length} karakter
+                  </span>
+                </div>
+                <textarea
+                  rows={5}
+                  required
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/80 font-work text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:bg-white focus:border-amber-300 transition-all resize-none leading-relaxed placeholder:text-slate-400"
+                  placeholder="Tuliskan pengalaman atau ringkasan tur Jeep Merapi yang menggugah selera petualangan tamu..."
+                />
+              </div>
+              </div>
+            </div>
+
+            {/* Card 2: Photo Collage Section */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              {/* Card Header */}
+              <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                    <ImageIcon className="w-3.5 h-3.5 text-blue-600" />
+                  </div>
+                  <div>
+                    <span className="font-space font-black text-xs text-slate-900 uppercase tracking-wider">
+                      2. Foto Kolase
+                    </span>
+                    <p className="text-[10px] text-slate-400 font-work mt-0.5">
+                      Maksimal 2 foto untuk kolase beranda
+                    </p>
+                  </div>
+                </div>
+                <span className={`text-[10px] font-space font-bold px-2.5 py-1 rounded-full border ${
+                  image2 
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                    : 'bg-amber-50 text-amber-700 border-amber-200'
+                }`}>
+                  {image2 ? '2 Foto Aktif' : '1 Foto Aktif'}
+                </span>
+              </div>
+
+              <div className="p-6 space-y-5">
+              {/* Photos 2-Col Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Photo 1: Main */}
+                <div className="rounded-xl border-2 border-amber-200 bg-gradient-to-b from-amber-50/30 to-white overflow-hidden">
+                  {/* Photo Header */}
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-amber-50 border-b border-amber-100">
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-500 text-slate-950 font-space font-bold text-[10px] uppercase">
+                      <span>①</span>
+                      <span>Foto Utama (Wajib)</span>
+                    </span>
+                    <span className="text-[10px] font-space text-amber-700 font-bold">Latar Besar</span>
+                  </div>
+
+                  <div className="p-4 space-y-3">
+                    {/* Image Preview Box */}
+                    <div className="relative aspect-[16/10] w-full rounded-lg overflow-hidden border border-slate-200 bg-slate-100 shadow-inner">
+                      {image1 ? (
+                        <img
+                          src={image1}
+                          alt="Preview Foto 1"
+                          className="w-full h-full object-cover"
+                          onError={e => { (e.target as HTMLImageElement).src = '/images/img_1_53_jeep_cruising_through_volcanic_off-road_track_mount_merapi.png'; }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-2">
+                          <ImageIcon className="w-8 h-8 opacity-40" />
+                          <span className="font-space text-xs">Belum ada foto</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Input URL */}
+                    <div className="space-y-1.5">
+                      <label className="block font-space font-bold text-[10px] text-slate-600 uppercase tracking-wider">
+                        URL / Path Foto *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={image1}
+                        onChange={e => setImage1(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 font-mono text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400 focus:bg-white transition-all"
+                        placeholder="/images/nama-foto.png"
+                      />
+                    </div>
+
+                    {/* Input Caption */}
+                    <div className="space-y-1.5">
+                      <label className="block font-space font-bold text-[10px] text-slate-600 uppercase tracking-wider">
+                        Caption / Keterangan Foto
+                      </label>
+                      <input
+                        type="text"
+                        value={image1Caption}
+                        onChange={e => setImage1Caption(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 font-work text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400 focus:bg-white transition-all"
+                        placeholder="Lereng Selatan Gunung Merapi"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Photo 2: Secondary / Overlay */}
+                <div className="rounded-xl border-2 border-slate-200 bg-gradient-to-b from-slate-50/50 to-white overflow-hidden">
+                  {/* Photo Header */}
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-700 text-white font-space font-bold text-[10px] uppercase">
+                      <span>②</span>
+                      <span>Foto Aksen (Opsional)</span>
+                    </span>
+                    <span className="text-[10px] font-space text-slate-500 font-bold">Kartu Tumpuk</span>
+                  </div>
+
+                  <div className="p-4 space-y-3">
+                    {/* Image Preview Box */}
+                    <div className="relative aspect-[16/10] w-full rounded-lg overflow-hidden border border-slate-200 bg-slate-100 shadow-inner">
+                      {image2 ? (
+                        <img
+                          src={image2}
+                          alt="Preview Foto 2"
+                          className="w-full h-full object-cover"
+                          onError={e => { (e.target as HTMLImageElement).style.display='none'; }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-2">
+                          <ImageIcon className="w-8 h-8 opacity-40" />
+                          <span className="font-space text-xs">Foto kedua kosong</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Input URL */}
+                    <div className="space-y-1.5">
+                      <label className="block font-space font-bold text-[10px] text-slate-600 uppercase tracking-wider">
+                        URL / Path Foto
+                      </label>
+                      <input
+                        type="text"
+                        value={image2}
+                        onChange={e => setImage2(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 font-mono text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400 focus:bg-white transition-all"
+                        placeholder="/images/nama-foto.png (opsional)"
+                      />
+                    </div>
+
+                    {/* Input Caption */}
+                    <div className="space-y-1.5">
+                      <label className="block font-space font-bold text-[10px] text-slate-600 uppercase tracking-wider">
+                        Caption / Keterangan Foto
+                      </label>
+                      <input
+                        type="text"
+                        value={image2Caption}
+                        onChange={e => setImage2Caption(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 font-work text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400 focus:bg-white transition-all"
+                        placeholder="Momen Seru Penumpang"
+                      />
+                    </div>
+
+                    {image2 && (
+                      <button
+                        type="button"
+                        onClick={() => { setImage2(''); setImage2Caption(''); }}
+                        className="flex items-center gap-1.5 text-[11px] font-space font-bold text-red-500 hover:text-red-600 transition-colors pt-1"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        <span>Hapus Foto Kedua</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Info Tips */}
+              <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200/80 text-xs font-work text-blue-900 flex items-start gap-2.5">
+                <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                <div className="leading-relaxed">
+                  <strong>Tips Kolase:</strong> Foto pertama tampil dominan di latar belakang. Foto kedua tampil sebagai kartu aksen melayang di sudut kolase — biarkan kosong untuk tampilan satu foto saja.
+                </div>
+              </div>
+              </div>
+            </div>
+
+            {/* Submit Button Bar */}
+            <div className="flex items-center justify-end gap-3 pt-1">
+              <button
+                type="submit"
+                disabled={saving}
+                className="w-full sm:w-auto px-8 py-3.5 rounded-xl font-space font-bold text-sm bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-slate-950 shadow-md shadow-amber-500/20 hover:shadow-lg hover:shadow-amber-500/30 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                <Check className="w-4 h-4" />
+                <span>{saving ? 'Menyimpan Konten...' : 'SIMPAN PERUBAHAN INTRO'}</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* RIGHT COLUMN: Realtime Live Preview (5 cols) */}
+        <div className="xl:col-span-5 xl:sticky xl:top-6 space-y-4">
+          {/* Live Preview Card */}
+          <div className="bg-slate-950 text-white rounded-2xl overflow-hidden border border-slate-800 shadow-2xl">
+            {/* Preview Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 bg-slate-900 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="flex gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/70" />
+                </div>
+                <div className="flex items-center gap-2 ml-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="font-space font-bold text-[11px] uppercase tracking-wider text-slate-300">
+                    Live Visual Preview
+                  </span>
+                </div>
+              </div>
+              <span className="text-[10px] font-mono text-slate-400 bg-slate-800 px-2.5 py-1 rounded-md border border-slate-700">
+                Tampilan Beranda
+              </span>
+            </div>
+
+            {/* Mockup Container */}
+            <div className="p-5 space-y-5">
+              {/* Badge & Headline Preview */}
+              <div className="space-y-2.5">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 font-space font-bold text-[10px] tracking-wider uppercase">
+                  <span className="w-1 h-1 rounded-full bg-amber-400" />
+                  MERAPI EXPEDITION
+                </span>
+                <h4 className={`font-outfit font-black text-xl leading-tight transition-all ${
+                  headline ? 'text-white' : 'text-slate-600 italic'
+                }`}>
+                  {headline || 'Judul intro belum diisi...'}
+                </h4>
+                <p className={`text-xs font-work leading-relaxed line-clamp-4 transition-all ${
+                  description ? 'text-slate-400' : 'text-slate-700 italic'
+                }`}>
+                  {description || 'Paragraf deskripsi intro akan tampil di sini...'}
+                </p>
+              </div>
+
+              {/* Collage Image Mockup */}
+              <div className="relative pb-8">
+                {/* Image 1 */}
+                <div className="relative aspect-[16/10] w-full rounded-xl overflow-hidden border border-slate-700 shadow-lg bg-slate-800">
+                  {image1 ? (
+                    <img src={image1} alt="Mockup 1" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-600 gap-2">
+                      <ImageIcon className="w-10 h-10 opacity-30" />
+                      <span className="text-xs font-space">Foto 1 Belum Dipilih</span>
+                    </div>
+                  )}
+                  {image1Caption && (
+                    <div className="absolute bottom-0 left-0 right-0 px-3 py-2 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+                      <span className="flex items-center gap-1 text-[10px] font-space text-slate-200 truncate">
+                        <MapPin className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+                        {image1Caption}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Image 2 Overlay */}
+                {image2 && (
+                  <div className="absolute -bottom-1 right-1 w-[46%] aspect-[4/3] rounded-xl overflow-hidden border-2 border-amber-400 shadow-2xl bg-slate-900 ring-4 ring-slate-950 transition-all">
+                    <img src={image2} alt="Mockup 2" className="w-full h-full object-cover" />
+                    {image2Caption && (
+                      <div className="absolute bottom-0 left-0 right-0 px-2 py-1.5 bg-gradient-to-t from-black/90 to-transparent">
+                        <span className="flex items-center gap-1 text-[9px] font-space text-amber-300 truncate">
+                          <span className="text-amber-400">★</span>
+                          {image2Caption}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Helper text */}
+              <div className="flex items-center justify-center gap-2 pt-1">
+                <span className="w-1 h-1 rounded-full bg-slate-700" />
+                <p className="text-[11px] font-work text-slate-600 text-center">
+                  Perubahan ter-update secara real-time
+                </p>
+                <span className="w-1 h-1 rounded-full bg-slate-700" />
+              </div>
+            </div>
+          </div>
+
+          {/* Status Konten Card */}
+          <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3 shadow-sm">
+            <span className="font-space font-bold text-[10px] uppercase tracking-wider text-slate-500 block">
+              Status Konten
+            </span>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-work text-slate-600">Judul</span>
+                <span className={`font-space font-bold px-2 py-0.5 rounded-full text-[10px] ${
+                  headline.trim() ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                }`}>
+                  {headline.trim() ? '✓ Terisi' : '○ Kosong'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-work text-slate-600">Deskripsi</span>
+                <span className={`font-space font-bold px-2 py-0.5 rounded-full text-[10px] ${
+                  description.trim() ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                }`}>
+                  {description.trim() ? '✓ Terisi' : '○ Kosong'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-work text-slate-600">Foto Utama</span>
+                <span className={`font-space font-bold px-2 py-0.5 rounded-full text-[10px] ${
+                  image1.trim() ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                }`}>
+                  {image1.trim() ? '✓ Terisi' : '⚠ Wajib diisi'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-work text-slate-600">Foto Aksen</span>
+                <span className={`font-space font-bold px-2 py-0.5 rounded-full text-[10px] ${
+                  image2.trim() ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                }`}>
+                  {image2.trim() ? '✓ Terisi' : '○ Opsional'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Packages Admin Panel Component ─────────────────────────────── */
+
+interface PackagesAdminPanelProps {
+  packages: TourPackage[];
+  onRefresh: () => Promise<void>;
+}
+
+function PackagesAdminPanel({ packages, onRefresh }: PackagesAdminPanelProps) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingPkg, setEditingPkg] = useState<TourPackage | null>(null);
+
+  // Form states
+  const [title, setTitle] = useState('');
+  const [price, setPrice] = useState('');
+  const [duration, setDuration] = useState('');
+  const [badge, setBadge] = useState('');
+  const [subBadge, setSubBadge] = useState('');
+  const [image, setImage] = useState('');
+  const [color, setColor] = useState<'slate' | 'amber' | 'orange'>('slate');
+  const [isFeatured, setIsFeatured] = useState(false);
+  const [featureText, setFeatureText] = useState('');
+  const [destinationsText, setDestinationsText] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const openCreateModal = () => {
+    setEditingPkg(null);
+    setTitle('');
+    setPrice('Rp ');
+    setDuration('2 - 2.5 Jam');
+    setBadge('RUTE MERAPI');
+    setSubBadge('OFFROAD TOUR');
+    setImage('/images/img_1_156_paket_short_merapi_jeep.png');
+    setColor('slate');
+    setIsFeatured(false);
+    setFeatureText('');
+    setDestinationsText('Museum Sisa Hartaku (Erupsi 2010)\nBatu Alien (Batu Wajah Merapi)\nBunker Kaliadem & Puncak Merapi\nSpot Foto Estetik Lereng Merapi');
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (pkg: TourPackage) => {
+    setEditingPkg(pkg);
+    setTitle(pkg.title);
+    setPrice(pkg.price);
+    setDuration(pkg.duration);
+    setBadge(pkg.badge || '');
+    setSubBadge(pkg.subBadge || '');
+    setImage(pkg.image || '');
+    setColor((pkg.color as 'slate' | 'amber' | 'orange') || 'slate');
+    setIsFeatured(!!pkg.isFeatured);
+    setFeatureText(pkg.featureText || '');
+    setDestinationsText((pkg.destinations || []).join('\n'));
+    setIsModalOpen(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim() || !price.trim() || !duration.trim()) {
+      alert('Nama paket, tarif harga, dan durasi wajib diisi!');
+      return;
+    }
+
+    const destinations = destinationsText
+      .split('\n')
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    setSaving(true);
+    try {
+      const payload = {
+        title: title.trim(),
+        price: price.trim(),
+        duration: duration.trim(),
+        badge: badge.trim(),
+        subBadge: subBadge.trim(),
+        image: image.trim(),
+        color,
+        isFeatured,
+        featureText: isFeatured ? featureText.trim() : '',
+        destinations,
+      };
+
+      let res;
+      if (editingPkg) {
+        res = await fetch(`/api/packages/${editingPkg.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        res = await fetch('/api/packages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      const json = await res.json();
+      if (json.success) {
+        setIsModalOpen(false);
+        await onRefresh();
+      } else {
+        alert('Gagal menyimpan: ' + (json.error || 'Terjadi kesalahan'));
+      }
+    } catch {
+      alert('Terjadi kesalahan jaringan.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (pkg: TourPackage) => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus paket "${pkg.title}"?`)) return;
+
+    setDeletingId(pkg.id);
+    try {
+      const res = await fetch(`/api/packages/${pkg.id}`, {
+        method: 'DELETE',
+      });
+      const json = await res.json();
+      if (json.success) {
+        await onRefresh();
+      } else {
+        alert('Gagal menghapus: ' + (json.error || 'Terjadi kesalahan'));
+      }
+    } catch {
+      alert('Terjadi kesalahan jaringan.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Action Control Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs">
+        <div className="flex items-center gap-3">
+          <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-mono font-bold">
+            {packages.length} Paket Wisata Aktif
+          </span>
+          <span className="text-xs text-slate-500 font-work hidden sm:inline">
+            Klik <strong>Edit Paket</strong> untuk mengubah rute destinasi atau tarif harga.
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={openCreateModal}
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-space font-bold text-xs shadow-xs hover:shadow transition-all cursor-pointer shrink-0"
+        >
+          <Plus className="w-4 h-4" />
+          <span>+ Tambah Paket Baru</span>
+        </button>
+      </div>
+
+      {/* Packages Grid: 4 Columns on XL screens for balanced layout */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 items-stretch">
+        {packages.map((pkg) => (
+          <div
+            key={pkg.id}
+            className={`bg-white rounded-2xl border transition-all duration-200 overflow-hidden flex flex-col justify-between shadow-xs hover:shadow-md ${
+              pkg.isFeatured
+                ? 'border-amber-400 ring-2 ring-amber-400/20 shadow-amber-500/5'
+                : 'border-slate-200/80'
+            }`}
+          >
+            <div className="flex flex-col h-full">
+              {/* Media Header (Aspect 16/10) */}
+              <div className="relative aspect-[16/10] w-full bg-slate-900 overflow-hidden shrink-0">
+                {pkg.image ? (
+                  <img
+                    src={pkg.image}
+                    alt={pkg.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = '/images/img_1_156_paket_short_merapi_jeep.png';
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-slate-800 text-slate-400 text-xs font-space">
+                    Tidak ada gambar
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-black/40" />
+
+                {/* Badges Overlay */}
+                <div className="absolute top-2.5 left-2.5 right-2.5 flex items-start justify-between gap-1.5">
+                  {pkg.badge && (
+                    <span className="px-2.5 py-1 rounded-md text-[9px] font-space font-bold uppercase tracking-wider bg-slate-950/85 text-amber-400 border border-amber-400/30 backdrop-blur-xs shadow-xs">
+                      {pkg.badge}
+                    </span>
+                  )}
+                  {pkg.isFeatured && pkg.badge !== 'BEST SELLER' && (
+                    <span className="px-2 py-0.5 rounded-md text-[9px] font-space font-bold uppercase bg-amber-500 text-slate-950 shadow-sm flex items-center gap-1">
+                      <Sparkles className="w-2.5 h-2.5" />
+                      <span>BEST SELLER</span>
+                    </span>
+                  )}
+                </div>
+
+                {/* Duration chip on bottom right of photo */}
+                <div className="absolute bottom-2.5 right-2.5 px-2 py-1 rounded bg-black/75 backdrop-blur-xs text-[10px] font-space text-slate-200 flex items-center gap-1 border border-white/10">
+                  <Clock className="w-3 h-3 text-amber-400" />
+                  <span>{pkg.duration}</span>
+                </div>
+              </div>
+
+              {/* Content Body */}
+              <div className="p-4 space-y-3 flex-1 flex flex-col">
+                <div>
+                  <span className="block text-[10px] font-space font-semibold uppercase tracking-wider text-slate-400 mb-0.5">
+                    {pkg.subBadge || 'OFFROAD ADVENTURE'}
+                  </span>
+                  <h3 className="font-outfit font-black text-lg text-slate-900 leading-tight">
+                    {pkg.title}
+                  </h3>
+                  <div className="font-space font-black text-amber-600 text-xl mt-1">
+                    {pkg.price}
+                  </div>
+                </div>
+
+                {/* Highlight Slot (Consistent height so destination boxes align) */}
+                <div className="h-7 flex items-center">
+                  {pkg.featureText ? (
+                    <div className="w-full text-[10px] font-space font-bold text-amber-900 bg-amber-50 border border-amber-200/90 px-2 py-1 rounded-lg flex items-center gap-1.5 truncate">
+                      <Sparkles className="w-3 h-3 text-amber-600 shrink-0" />
+                      <span className="truncate">{pkg.featureText}</span>
+                    </div>
+                  ) : (
+                    <div className="h-full" />
+                  )}
+                </div>
+
+                {/* Destinations Box */}
+                <div className="bg-slate-50/90 border border-slate-200/70 rounded-xl p-3 flex-1 flex flex-col justify-between">
+                  <div>
+                    <span className="block font-space font-bold text-[9px] text-slate-400 uppercase tracking-wider mb-2">
+                      DESTINASI & RUTE ({pkg.destinations?.length || 0})
+                    </span>
+                    <ul className="space-y-1.5">
+                      {(pkg.destinations || []).map((dest, i) => (
+                        <li key={i} className="flex items-start gap-1.5 text-[11px] font-work text-slate-700 leading-snug">
+                          <Check className="w-3.5 h-3.5 text-amber-600 mt-0.5 shrink-0" />
+                          <span>{dest}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Action Buttons */}
+            <div className="p-3 bg-slate-50/60 border-t border-slate-100 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => openEditModal(pkg)}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-slate-200 hover:border-amber-400 hover:text-amber-800 text-slate-700 font-space font-bold text-xs transition-all shadow-xs cursor-pointer"
+              >
+                <Edit3 className="w-3.5 h-3.5 text-amber-600" />
+                <span>Edit Paket</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleDelete(pkg)}
+                disabled={deletingId === pkg.id}
+                className="inline-flex items-center justify-center p-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 transition-colors cursor-pointer disabled:opacity-50"
+                title="Hapus Paket"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Modal Add / Edit (Redesigned) */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-2xl w-full p-6 sm:p-7 my-8 space-y-6 relative max-h-[92vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-amber-100 text-amber-800 font-bold">
+                  <Package className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-outfit font-black text-xl text-slate-900">
+                    {editingPkg ? `Edit Data: ${editingPkg.title}` : 'Tambah Paket Wisata Baru'}
+                  </h3>
+                  <p className="text-xs text-slate-500 font-work">
+                    Atur nama paket, tarif sewa, estimasi durasi, dan daftar destinasi.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Section 1: Detail Utama */}
+              <div className="space-y-3">
+                <span className="block font-space font-bold text-xs text-slate-800 uppercase tracking-wider">
+                  Informasi Paket
+                </span>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                  <div className="space-y-1 sm:col-span-1">
+                    <label className="block font-space font-bold text-[11px] text-slate-700 uppercase">
+                      Nama Paket <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="Paket Short"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 font-outfit font-bold text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:bg-white"
+                    />
+                  </div>
+
+                  <div className="space-y-1 sm:col-span-1">
+                    <label className="block font-space font-bold text-[11px] text-slate-700 uppercase">
+                      Tarif Sewa <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
+                      placeholder="Rp 400.000"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 font-space font-bold text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:bg-white"
+                    />
+                  </div>
+
+                  <div className="space-y-1 sm:col-span-1">
+                    <label className="block font-space font-bold text-[11px] text-slate-700 uppercase">
+                      Estimasi Durasi <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={duration}
+                      onChange={(e) => setDuration(e.target.value)}
+                      placeholder="1.5 - 2 Jam"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 font-work text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 2: Badges & Label */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1">
+                  <label className="block font-space font-bold text-[11px] text-slate-700 uppercase">
+                    Badge Atas (Contoh: RUTE DASAR / BEST SELLER)
+                  </label>
+                  <input
+                    type="text"
+                    value={badge}
+                    onChange={(e) => setBadge(e.target.value)}
+                    placeholder="RUTE DASAR"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 font-space text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400 focus:bg-white"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block font-space font-bold text-[11px] text-slate-700 uppercase">
+                    Sub-Badge (Contoh: EKSPEDISI CEPAT)
+                  </label>
+                  <input
+                    type="text"
+                    value={subBadge}
+                    onChange={(e) => setSubBadge(e.target.value)}
+                    placeholder="EKSPEDISI CEPAT"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 font-space text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400 focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Section 3: Foto Banner URL */}
+              <div className="space-y-1.5">
+                <label className="block font-space font-bold text-[11px] text-slate-700 uppercase">
+                  URL / Path Foto Banner Paket
+                </label>
+                <div className="flex gap-3 items-center">
+                  <input
+                    type="text"
+                    value={image}
+                    onChange={(e) => setImage(e.target.value)}
+                    placeholder="/images/img_1_156_paket_short_merapi_jeep.png"
+                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 font-mono text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400 focus:bg-white"
+                  />
+                  {image && (
+                    <div className="w-14 h-10 rounded-lg overflow-hidden border border-slate-200 shrink-0 bg-slate-900">
+                      <img
+                        src={image}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Section 4: Best Seller / Highlight Toggle */}
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isFeatured}
+                    onChange={(e) => setIsFeatured(e.target.checked)}
+                    className="w-4 h-4 rounded text-amber-500 focus:ring-amber-400 cursor-pointer"
+                  />
+                  <span className="font-space font-bold text-xs text-slate-800 uppercase">
+                    Tandai Sebagai Paket Populer (Highlight &amp; Best Seller)
+                  </span>
+                </label>
+
+                {isFeatured && (
+                  <div className="space-y-1 pt-1">
+                    <label className="block font-space font-bold text-[10px] text-amber-800 uppercase">
+                      Teks Keterangan Highlight
+                    </label>
+                    <input
+                      type="text"
+                      value={featureText}
+                      onChange={(e) => setFeatureText(e.target.value)}
+                      placeholder="Contoh: PALING FAVORIT & REKOMENDASI"
+                      className="w-full px-3 py-2 rounded-lg border border-amber-300 bg-white font-space text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Section 5: Daftar Destinasi */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="block font-space font-bold text-xs text-slate-700 uppercase">
+                    Daftar Rute Destinasi
+                  </label>
+                  <span className="text-[10px] text-slate-400 font-work">
+                    Tulis 1 destinasi per baris (tekan Enter)
+                  </span>
+                </div>
+                <textarea
+                  rows={4}
+                  value={destinationsText}
+                  onChange={(e) => setDestinationsText(e.target.value)}
+                  placeholder="Museum Sisa Hartaku (Erupsi 2010)&#10;Batu Alien (Batu Wajah Merapi)&#10;Bunker Kaliadem & Puncak Merapi&#10;Spot Foto Estetik Lereng Merapi"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 font-work text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400 focus:bg-white leading-relaxed"
+                />
+              </div>
+
+              {/* Modal Actions */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-space font-bold text-xs hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-7 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-space font-bold text-xs shadow-xs hover:shadow transition-all cursor-pointer disabled:opacity-60 flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{saving ? 'Menyimpan...' : editingPkg ? 'Simpan Perubahan' : 'Tambah Paket'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+

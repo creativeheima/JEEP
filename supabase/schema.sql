@@ -122,9 +122,19 @@ create table if not exists public.hero_slides (
   id text primary key,
   image_url text not null,
   title text not null default '',
+  show_text boolean not null default true,
+  headline text,
+  subheadline text,
+  show_button boolean not null default true,
   order_index integer not null default 1,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
+
+-- Migrasi kolom jika tabel sudah pernah dibuat sebelumnya:
+alter table public.hero_slides add column if not exists show_text boolean not null default true;
+alter table public.hero_slides add column if not exists headline text;
+alter table public.hero_slides add column if not exists subheadline text;
+alter table public.hero_slides add column if not exists show_button boolean not null default true;
 
 grant all on table public.hero_slides to anon, authenticated, service_role;
 grant all on all sequences in schema public to anon, authenticated, service_role;
@@ -142,5 +152,6 @@ create policy "Allow public update hero_slides" on public.hero_slides for update
 
 drop policy if exists "Allow public delete hero_slides" on public.hero_slides;
 create policy "Allow public delete hero_slides" on public.hero_slides for delete using (true);
+
 
 

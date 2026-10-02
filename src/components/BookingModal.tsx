@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   X,
@@ -13,11 +13,13 @@ import {
   Clock,
   Sparkles,
   ArrowRight,
-  ExternalLink,
   MessageSquare,
-  Car
+  Car,
+  Plus,
+  Minus
 } from 'lucide-react';
-import { packagesData } from './PackagesSection';
+import { defaultPackagesData } from './PackagesSection';
+import { TourPackage } from '@/types/package';
 import { Booking } from '@/types/booking';
 
 interface BookingModalProps {
@@ -34,6 +36,7 @@ export default function BookingModal({
   const [selectedPkg, setSelectedPkg] = useState(
     initialPackage || 'Paket Medium'
   );
+  const [availablePackages, setAvailablePackages] = useState<TourPackage[]>(defaultPackagesData);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [date, setDate] = useState('');
@@ -42,14 +45,33 @@ export default function BookingModal({
   const [passengers, setPassengers] = useState(4);
   const [notes, setNotes] = useState('');
 
+  useEffect(() => {
+    fetch('/api/packages')
+      .then(r => r.json())
+      .then(res => { if (res.success && Array.isArray(res.data) && res.data.length > 0) setAvailablePackages(res.data); })
+      .catch(() => {});
+  }, []);
+
   const [submitting, setSubmitting] = useState(false);
   const [submittedBooking, setSubmittedBooking] = useState<Booking | null>(null);
+
+  // Prevent background scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !phone) {
+    if (!name.trim() || !phone.trim()) {
       alert('Nama dan Nomor WhatsApp wajib diisi!');
       return;
     }
@@ -60,8 +82,8 @@ export default function BookingModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerName: name,
-          customerPhone: phone,
+          customerName: name.trim(),
+          customerPhone: phone.trim(),
           paxCount: passengers,
           jeepCount: jeepCount,
           packageName: selectedPkg,
@@ -89,7 +111,6 @@ export default function BookingModal({
 
   const handleOpenWaChat = () => {
     if (!submittedBooking) return;
-    const pkgInfo = packagesData.find((p) => p.title === submittedBooking.packageName);
     const message = `Halo Admin Merapi Jeep Adventure,%0A%0A` +
       `Saya sudah mengisi formulir reservasi di website:%0A` +
       `📌 *Kode Booking:* ${submittedBooking.bookingCode}%0A` +
@@ -105,120 +126,146 @@ export default function BookingModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in">
-      <div className="relative bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-100 my-8">
+    <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex sm:items-center items-end justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+      {/* Backdrop click to close */}
+      <div className="absolute inset-0" onClick={onClose} />
+
+      {/* Modal Card / Bottom Sheet Container */}
+      <div className="relative bg-white rounded-t-[28px] sm:rounded-3xl max-w-lg w-full max-h-[92vh] sm:max-h-[90vh] flex flex-col shadow-2xl border border-slate-100 z-10 overflow-hidden animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-2 duration-300">
         
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        {/* Mobile Drag Pill */}
+        <div className="sm:hidden flex justify-center pt-2.5 pb-1">
+          <div className="w-12 h-1.5 rounded-full bg-slate-300" />
+        </div>
 
-        {submittedBooking ? (
-          /* Success Screen After Client Inputs Booking */
-          <div className="text-center space-y-5 py-2 animate-in zoom-in-95">
-            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center mx-auto border border-amber-300">
-              <CheckCircle2 className="w-9 h-9" />
+        {/* Sticky Header */}
+        <div className="px-5 sm:px-6 pt-2 sm:pt-4 pb-3 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+              <Compass className="w-4 h-4" />
             </div>
-
             <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 font-space font-bold text-xs uppercase mb-2">
-                <span>DATA TELAH MASUK KE SISTEM BASECAMP</span>
-              </div>
-              <h3 className="font-outfit font-black text-2xl text-slate-950">
-                Pemesanan Berhasil Diajukan!
+              <h3 className="font-outfit font-black text-base sm:text-lg text-slate-950 leading-tight">
+                {submittedBooking ? 'Status Pengajuan Reservasi' : 'Pesan Petualangan Merapi'}
               </h3>
-              <p className="font-work text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                Kode reservasi Anda telah dibuat. Langkah selanjutnya adalah konfirmasi kesepakatan harga & DP dengan Admin via WhatsApp.
+              <p className="font-work text-[11px] text-slate-500 leading-none mt-0.5">
+                {submittedBooking ? 'Data berhasil masuk ke sistem' : 'Basecamp Kaliurang Barat • 4x4 Offroad'}
               </p>
-            </div>
-
-            {/* Ticket Code Box */}
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-1">
-              <span className="font-space text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
-                KODE RESERVASI ANDA
-              </span>
-              <span className="font-outfit font-black text-2xl text-slate-950 font-mono tracking-wider">
-                {submittedBooking.bookingCode}
-              </span>
-              <div className="pt-1">
-                <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-space font-bold uppercase bg-amber-100 text-amber-900 border border-amber-300">
-                  Status: Menunggu Konfirmasi & Approval Admin
-                </span>
-              </div>
-            </div>
-
-            {/* CTAs */}
-            <div className="space-y-2.5 pt-2">
-              <button
-                onClick={handleOpenWaChat}
-                className="amber-gradient-btn w-full py-3.5 rounded-xl font-space font-black text-xs text-slate-950 shadow-lg shadow-amber-500/25 flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <MessageSquare className="w-4 h-4" />
-                <span>LANJUTKAN CHAT WA UNTUK DEAL HARGA & DP</span>
-              </button>
-
-              <Link
-                href={`/invoice/${submittedBooking.bookingCode}`}
-                onClick={onClose}
-                className="w-full py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-space font-bold flex items-center justify-center gap-2 transition-colors block text-center"
-              >
-                <span>Lihat Status E-Tiket Saya</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
             </div>
           </div>
-        ) : (
-          /* Form Input by Client */
-          <>
-            <div className="mb-6">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 font-space font-bold text-xs mb-2">
-                <Compass className="w-3.5 h-3.5" />
-                <span>FORMULIR PEMESANAN JEEP 4X4</span>
-              </div>
-              <h3 className="font-outfit font-black text-2xl text-slate-950">
-                Pesan Petualangan Merapi
-              </h3>
-              <p className="font-work text-xs text-slate-500 mt-1">
-                Isi data pemesanan Anda di bawah. Admin basecamp akan mereview dan mengonfirmasi reservasi resmi Anda.
-              </p>
-            </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4 font-work text-xs">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-600 flex items-center justify-center transition-all cursor-pointer shrink-0"
+            title="Tutup Formulir"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Scrollable Modal Body */}
+        <div className="overflow-y-auto flex-1 p-5 sm:p-6 space-y-4 font-work text-xs overscroll-contain">
+          {submittedBooking ? (
+            /* Success Screen */
+            <div className="text-center space-y-4 py-2 animate-in zoom-in-95">
+              <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center mx-auto border border-amber-300">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 font-space font-bold text-[10px] uppercase mb-1.5">
+                  <span>DATA TELAH MASUK KE SISTEM BASECAMP</span>
+                </div>
+                <h3 className="font-outfit font-black text-xl text-slate-950">
+                  Pemesanan Berhasil Diajukan!
+                </h3>
+                <p className="font-work text-xs text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
+                  Kode reservasi Anda telah terbit. Langkah berikutnya adalah konfirmasi harga final &amp; DP ke Admin via WhatsApp.
+                </p>
+              </div>
+
+              {/* Booking Code Card */}
+              <div className="bg-amber-50/60 p-4 rounded-2xl border border-amber-200/80 space-y-1">
+                <span className="font-space text-[10px] font-bold text-amber-800 uppercase tracking-widest block">
+                  NOMOR REGISTRASI / KODE BOOKING
+                </span>
+                <span className="font-outfit font-black text-2xl text-slate-950 font-mono tracking-wider block">
+                  {submittedBooking.bookingCode}
+                </span>
+                <div className="pt-1">
+                  <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-space font-bold uppercase bg-amber-200 text-amber-900 border border-amber-300">
+                    Status: Menunggu Approval Admin
+                  </span>
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="space-y-2 pt-2">
+                <button
+                  type="button"
+                  onClick={handleOpenWaChat}
+                  className="amber-gradient-btn w-full h-12 rounded-xl font-space font-black text-xs text-slate-950 shadow-lg shadow-amber-500/25 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99] transition-all"
+                >
+                  <MessageSquare className="w-4 h-4 shrink-0" />
+                  <span>HUBUNGI ADMIN WA UNTUK DEAL &amp; DP</span>
+                </button>
+
+                <Link
+                  href={`/invoice/${submittedBooking.bookingCode}`}
+                  onClick={onClose}
+                  className="w-full h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-space font-bold flex items-center justify-center gap-2 transition-colors block text-center"
+                >
+                  <span>Lihat Status E-Tiket Saya</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            </div>
+          ) : (
+            /* Booking Form */
+            <form id="booking-form" onSubmit={handleSubmit} className="space-y-3.5">
               {/* Choose Package */}
               <div>
-                <label className="font-space font-bold text-slate-700 block mb-1.5 uppercase tracking-wide">
+                <label className="font-space font-bold text-slate-700 block mb-1.5 uppercase tracking-wide text-[11px]">
                   Pilihan Paket Wisata:
                 </label>
                 <div className="grid grid-cols-2 gap-2">
-                  {packagesData.map((pkg) => (
-                    <button
-                      type="button"
-                      key={pkg.id}
-                      onClick={() => setSelectedPkg(pkg.title)}
-                      className={`p-3 rounded-xl text-left border transition-all ${
-                        selectedPkg === pkg.title
-                          ? 'border-amber-500 bg-amber-50/70 ring-2 ring-amber-500/20'
-                          : 'border-slate-200 hover:border-slate-300 bg-slate-50/50'
-                      }`}
-                    >
-                      <div className="font-outfit font-bold text-xs text-slate-900">
-                        {pkg.title}
-                      </div>
-                      <div className="font-space font-black text-amber-700 text-xs mt-0.5">
-                        {pkg.price}
-                      </div>
-                    </button>
-                  ))}
+                  {availablePackages.map((pkg) => {
+                    const isSelected = selectedPkg === pkg.title;
+                    return (
+                      <button
+                        type="button"
+                        key={pkg.id}
+                        onClick={() => setSelectedPkg(pkg.title)}
+                        className={`p-2.5 sm:p-3 rounded-xl text-left border transition-all relative flex flex-col justify-between ${
+                          isSelected
+                            ? 'border-amber-500 bg-amber-50/80 ring-2 ring-amber-500/30 shadow-xs'
+                            : 'border-slate-200 hover:border-slate-300 bg-slate-50/60'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-1">
+                          <span className="font-outfit font-bold text-xs text-slate-900 leading-tight">
+                            {pkg.title}
+                          </span>
+                          {isSelected && (
+                            <span className="w-4 h-4 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center shrink-0 text-[10px] font-bold">
+                              ✓
+                            </span>
+                          )}
+                        </div>
+                        <div className="font-space font-black text-amber-700 text-xs mt-1">
+                          {pkg.price}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               {/* Name & Phone */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="font-space font-bold text-slate-700 block mb-1 uppercase">
+                  <label className="font-space font-bold text-slate-700 block mb-1 uppercase text-[11px]">
                     Nama Lengkap <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -229,13 +276,13 @@ export default function BookingModal({
                       placeholder="Contoh: Budi Santoso"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full pl-9 pr-3 h-11 py-0 text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-slate-900 bg-slate-50"
+                      className="w-full pl-9 pr-3 h-11 text-base sm:text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-slate-900 bg-slate-50"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="font-space font-bold text-slate-700 block mb-1 uppercase">
+                  <label className="font-space font-bold text-slate-700 block mb-1 uppercase text-[11px]">
                     Nomor WhatsApp <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -246,7 +293,7 @@ export default function BookingModal({
                       placeholder="0812xxxxxxxx"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      className="w-full pl-9 pr-3 h-11 py-0 text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-slate-900 bg-slate-50 font-mono"
+                      className="w-full pl-9 pr-3 h-11 text-base sm:text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-slate-900 bg-slate-50 font-mono"
                     />
                   </div>
                 </div>
@@ -255,7 +302,7 @@ export default function BookingModal({
               {/* Date & Time */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="font-space font-bold text-slate-700 block mb-1 uppercase">
+                  <label className="font-space font-bold text-slate-700 block mb-1 uppercase text-[11px]">
                     Tanggal Tur <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -263,15 +310,16 @@ export default function BookingModal({
                     <input
                       type="date"
                       required
+                      min={new Date().toISOString().split('T')[0]}
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
-                      className="w-full pl-9 pr-3 h-11 py-0 text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-slate-900 bg-slate-50"
+                      className="w-full pl-9 pr-3 h-11 text-base sm:text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-slate-900 bg-slate-50"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="font-space font-bold text-slate-700 block mb-1 uppercase">
+                  <label className="font-space font-bold text-slate-700 block mb-1 uppercase text-[11px]">
                     Perkiraan Jam Kumpul
                   </label>
                   <div className="relative">
@@ -281,55 +329,99 @@ export default function BookingModal({
                       placeholder="09:00 WIB"
                       value={time}
                       onChange={(e) => setTime(e.target.value)}
-                      className="w-full pl-9 pr-3 h-11 py-0 text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-slate-900 bg-slate-50"
+                      className="w-full pl-9 pr-3 h-11 text-base sm:text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-slate-900 bg-slate-50"
                     />
+                  </div>
+                  {/* Quick Preset Chips */}
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    {['04:30 WIB (Sunrise)', '08:30 WIB', '10:00 WIB', '13:30 WIB', '15:30 WIB'].map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setTime(t.split(' ')[0] + ' WIB')}
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-space font-semibold transition-all ${
+                          time.startsWith(t.split(' ')[0])
+                            ? 'bg-amber-500 text-slate-950 font-bold'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
 
-              {/* Passengers & Jeep Count */}
+              {/* Passengers & Jeep Count Steppers */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="font-space font-bold text-slate-700 flex items-end sm:min-h-[2rem] mb-1 uppercase">
-                    Jumlah Orang
+                  <label className="font-space font-bold text-slate-700 block mb-1 uppercase text-[11px]">
+                    Jumlah Peserta (Orang)
                   </label>
-                  <div className="relative">
-                    <Users className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <input
-                      type="number"
-                      min={1}
-                      required
-                      value={passengers}
-                      onChange={(e) => {
-                        const p = Number(e.target.value);
-                        setPassengers(p);
-                        setJeepCount(Math.ceil(p / 4));
+                  <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-2 h-11">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = Math.max(1, passengers - 1);
+                        setPassengers(next);
+                        setJeepCount(Math.ceil(next / 4));
                       }}
-                      className="w-full pl-9 pr-3 h-11 py-0 text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-slate-900 bg-slate-50 font-mono"
-                    />
+                      className="w-8 h-8 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 active:scale-95 text-slate-700 font-bold flex items-center justify-center transition-all shadow-xs"
+                      title="Kurangi"
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+                    <div className="flex items-center gap-1.5 font-outfit font-black text-sm text-slate-900">
+                      <Users className="w-4 h-4 text-amber-600" />
+                      <span>{passengers} Orang</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = passengers + 1;
+                        setPassengers(next);
+                        setJeepCount(Math.ceil(next / 4));
+                      }}
+                      className="w-8 h-8 rounded-lg bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold flex items-center justify-center transition-all shadow-xs"
+                      title="Tambah"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
 
                 <div>
-                  <label className="font-space font-bold text-slate-700 flex items-end sm:min-h-[2rem] mb-1 uppercase">
-                    Jumlah Unit Jeep (Maks 4 org/unit)
+                  <label className="font-space font-bold text-slate-700 block mb-1 uppercase text-[11px]">
+                    Kebutuhan Armada (Maks 4 org/unit)
                   </label>
-                  <div className="relative">
-                    <Car className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <input
-                    type="number"
-                    min={1}
-                    value={jeepCount}
-                    onChange={(e) => setJeepCount(Number(e.target.value))}
-                    className="w-full pl-9 pr-3 h-11 py-0 text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-slate-900 bg-slate-50 font-mono"
-                  />
+                  <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-2 h-11">
+                    <button
+                      type="button"
+                      onClick={() => setJeepCount(Math.max(1, jeepCount - 1))}
+                      className="w-8 h-8 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 active:scale-95 text-slate-700 font-bold flex items-center justify-center transition-all shadow-xs"
+                      title="Kurangi Jeep"
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+                    <div className="flex items-center gap-1.5 font-outfit font-black text-sm text-slate-900">
+                      <Car className="w-4 h-4 text-amber-600" />
+                      <span>{jeepCount} Unit Jeep</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setJeepCount(jeepCount + 1)}
+                      className="w-8 h-8 rounded-lg bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold flex items-center justify-center transition-all shadow-xs"
+                      title="Tambah Jeep"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
               </div>
 
               {/* Additional Notes */}
               <div>
-                <label className="font-space font-bold text-slate-700 block mb-1 uppercase">
+                <label className="font-space font-bold text-slate-700 block mb-1 uppercase text-[11px]">
                   Catatan Khusus (Opsional)
                 </label>
                 <textarea
@@ -337,26 +429,29 @@ export default function BookingModal({
                   placeholder="Contoh: Bawa anak kecil / ingin jemput di hotel sekitar Kaliurang"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-slate-900 bg-slate-50"
+                  className="w-full p-2.5 text-base sm:text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-amber-500 text-slate-900 bg-slate-50 resize-none"
                 />
               </div>
-
-              {/* Submit */}
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="amber-gradient-btn w-full py-3.5 rounded-xl font-space font-black text-xs text-slate-950 shadow-lg shadow-amber-500/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                >
-                  <span>{submitting ? 'MENGIRIM RESERVASI...' : 'KIRIM DATA RESERVASI KE BASECAMP'}</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-                <p className="text-center font-work text-[11px] text-slate-400 mt-2">
-                  Setelah dikirim, data akan masuk ke sistem Admin untuk di-approve invoice resminya.
-                </p>
-              </div>
             </form>
-          </>
+          )}
+        </div>
+
+        {/* Sticky Footer for Form Submission (Only when form is active) */}
+        {!submittedBooking && (
+          <div className="p-3.5 sm:p-5 border-t border-slate-100 bg-white/95 backdrop-blur-xs shrink-0 z-20">
+            <button
+              type="submit"
+              form="booking-form"
+              disabled={submitting}
+              className="amber-gradient-btn w-full h-12 rounded-xl font-space font-black text-xs text-slate-950 shadow-lg shadow-amber-500/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-[0.99] transition-all"
+            >
+              <span>{submitting ? 'MENGIRIM RESERVASI...' : 'KIRIM DATA RESERVASI KE BASECAMP'}</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+            <p className="text-center font-work text-[10.5px] text-slate-400 mt-1.5 leading-tight">
+              Tanpa biaya sekarang &bull; Deal harga &amp; DP via WhatsApp Admin
+            </p>
+          </div>
         )}
 
       </div>

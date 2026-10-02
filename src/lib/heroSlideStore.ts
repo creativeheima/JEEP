@@ -11,6 +11,8 @@ const INITIAL_HERO_SLIDES: HeroSlide[] = [
     id: 'slide-1',
     imageUrl: '/images/img_1_6_merapi_jeep_adventure_golden_hour_experience.png',
     title: 'Golden Sunrise Merapi Experience',
+    showText: true,
+    showButton: true,
     order: 1,
     createdAt: new Date(Date.now() - 50000).toISOString(),
   },
@@ -18,6 +20,8 @@ const INITIAL_HERO_SLIDES: HeroSlide[] = [
     id: 'slide-2',
     imageUrl: '/images/img_1_53_jeep_cruising_through_volcanic_off-road_track_mount_merapi.png',
     title: 'Ekspedisi Jalur Vulkanik & Lava Track',
+    showText: true,
+    showButton: true,
     order: 2,
     createdAt: new Date(Date.now() - 40000).toISOString(),
   },
@@ -25,6 +29,8 @@ const INITIAL_HERO_SLIDES: HeroSlide[] = [
     id: 'slide-3',
     imageUrl: '/images/img_1_193_paket_medium_kali_kuning_splashing_water.png',
     title: 'Sensasi Manuver Basah Kali Kuning',
+    showText: true,
+    showButton: true,
     order: 3,
     createdAt: new Date(Date.now() - 30000).toISOString(),
   },
@@ -32,6 +38,8 @@ const INITIAL_HERO_SLIDES: HeroSlide[] = [
     id: 'slide-4',
     imageUrl: '/images/img_1_372_bunker_kaliadem.png',
     title: 'Pesona Bersejarah Bunker Kaliadem',
+    showText: true,
+    showButton: true,
     order: 4,
     createdAt: new Date(Date.now() - 20000).toISOString(),
   },
@@ -39,6 +47,8 @@ const INITIAL_HERO_SLIDES: HeroSlide[] = [
     id: 'slide-5',
     imageUrl: '/images/img_1_443_travelers_smiling_in_4x4_jeep_with_mount_merapi_in_the_background.png',
     title: 'Momen Bahagia Wisatawan & Keluarga',
+    showText: true,
+    showButton: true,
     order: 5,
     createdAt: new Date(Date.now() - 10000).toISOString(),
   },
@@ -55,6 +65,10 @@ function toDatabaseRow(slide: HeroSlide) {
     id: slide.id,
     image_url: slide.imageUrl,
     title: slide.title,
+    show_text: slide.showText !== false,
+    headline: slide.headline || null,
+    subheadline: slide.subheadline || null,
+    show_button: slide.showButton !== false,
     order_index: slide.order,
     created_at: slide.createdAt,
   };
@@ -65,6 +79,10 @@ function fromDatabaseRow(row: Record<string, any>): HeroSlide {
     id: String(row.id),
     imageUrl: String(row.image_url),
     title: String(row.title || ''),
+    showText: row.show_text !== false && row.showText !== false,
+    headline: row.headline || '',
+    subheadline: row.subheadline || '',
+    showButton: row.show_button !== false && row.showButton !== false,
     order: Number(row.order_index) || 1,
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
   };
@@ -79,7 +97,15 @@ export function getLocalHeroSlides(): HeroSlide[] {
   try {
     const raw = fs.readFileSync(DATA_FILE, 'utf8');
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_HERO_SLIDES;
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      // Normalize showText default to true if undefined
+      return parsed.map(slide => ({
+        ...slide,
+        showText: slide.showText !== false,
+        showButton: slide.showButton !== false,
+      }));
+    }
+    return INITIAL_HERO_SLIDES;
   } catch {
     return INITIAL_HERO_SLIDES;
   }
@@ -122,6 +148,10 @@ export async function insertHeroSlide(slide: Omit<HeroSlide, 'id' | 'createdAt' 
     id: 'slide-' + Date.now(),
     imageUrl: slide.imageUrl.trim(),
     title: (slide.title || 'Slide Beranda').trim(),
+    showText: slide.showText !== false,
+    headline: slide.headline?.trim() || '',
+    subheadline: slide.subheadline?.trim() || '',
+    showButton: slide.showButton !== false,
     order: currentSlides.length + 1,
     createdAt: new Date().toISOString(),
   };
@@ -150,6 +180,42 @@ export async function insertHeroSlide(slide: Omit<HeroSlide, 'id' | 'createdAt' 
   local.push(newSlide);
   saveLocalHeroSlides(local);
   return { success: true, data: newSlide };
+}
+
+export async function updateHeroSlide(
+  id: string,
+  updates: Partial<Omit<HeroSlide, 'id' | 'createdAt' | 'order'>>
+): Promise<{ success: boolean; data?: HeroSlide; error?: string }> {
+  let local = getLocalHeroSlides();
+  const slideIndex = local.findIndex((s) => s.id === id);
+  if (slideIndex === -1) {
+    return { success: false, error: 'Slide tidak ditemukan' };
+  }
+
+  const existing = local[slideIndex];
+  const updatedSlide: HeroSlide = {
+    ...existing,
+    ...updates,
+    showText: updates.showText !== undefined ? updates.showText : (existing.showText !== false),
+    showButton: updates.showButton !== undefined ? updates.showButton : (existing.showButton !== false),
+  };
+
+  local[slideIndex] = updatedSlide;
+  saveLocalHeroSlides(local);
+
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const row = toDatabaseRow(updatedSlide);
+      await supabase
+        .from('hero_slides')
+        .update(row)
+        .eq('id', id);
+    } catch (err) {
+      console.error('Supabase update hero slide error:', err);
+    }
+  }
+
+  return { success: true, data: updatedSlide };
 }
 
 export async function deleteHeroSlide(id: string): Promise<boolean> {

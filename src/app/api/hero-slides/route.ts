@@ -34,6 +34,10 @@ export async function POST(request: Request) {
     const result = await insertHeroSlide({
       imageUrl: body.imageUrl,
       title: body.title || 'Foto Petualangan Merapi',
+      showText: body.showText !== undefined ? Boolean(body.showText) : true,
+      headline: body.headline || '',
+      subheadline: body.subheadline || '',
+      showButton: body.showButton !== undefined ? Boolean(body.showButton) : true,
     });
 
     if (!result.success) {

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { ArrowRight, ChevronDown } from 'lucide-react';
+import { ArrowRight, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { HeroSlide } from '@/types/heroSlide';
 
 interface HeroSectionProps {
@@ -14,6 +14,8 @@ const DEFAULT_SLIDES: HeroSlide[] = [
     id: 'slide-1',
     imageUrl: '/images/img_1_6_merapi_jeep_adventure_golden_hour_experience.png',
     title: 'Golden Sunrise Merapi Experience',
+    showText: true,
+    showButton: true,
     order: 1,
     createdAt: '',
   },
@@ -21,6 +23,8 @@ const DEFAULT_SLIDES: HeroSlide[] = [
     id: 'slide-2',
     imageUrl: '/images/img_1_53_jeep_cruising_through_volcanic_off-road_track_mount_merapi.png',
     title: 'Ekspedisi Jalur Vulkanik & Lava Track',
+    showText: true,
+    showButton: true,
     order: 2,
     createdAt: '',
   },
@@ -28,6 +32,8 @@ const DEFAULT_SLIDES: HeroSlide[] = [
     id: 'slide-3',
     imageUrl: '/images/img_1_193_paket_medium_kali_kuning_splashing_water.png',
     title: 'Sensasi Manuver Basah Kali Kuning',
+    showText: true,
+    showButton: true,
     order: 3,
     createdAt: '',
   },
@@ -35,6 +41,8 @@ const DEFAULT_SLIDES: HeroSlide[] = [
     id: 'slide-4',
     imageUrl: '/images/img_1_372_bunker_kaliadem.png',
     title: 'Pesona Bersejarah Bunker Kaliadem',
+    showText: true,
+    showButton: true,
     order: 4,
     createdAt: '',
   },
@@ -42,6 +50,8 @@ const DEFAULT_SLIDES: HeroSlide[] = [
     id: 'slide-5',
     imageUrl: '/images/img_1_443_travelers_smiling_in_4x4_jeep_with_mount_merapi_in_the_background.png',
     title: 'Momen Bahagia Wisatawan & Keluarga',
+    showText: true,
+    showButton: true,
     order: 5,
     createdAt: '',
   },
@@ -65,7 +75,7 @@ export default function HeroSection({ onOpenBooking }: HeroSectionProps) {
       .catch(err => console.error('Error fetching hero slides:', err));
   }, []);
 
-  // Auto-play slideshow every 6 seconds smoothly
+  // Auto-play slideshow smoothly
   useEffect(() => {
     if (slides.length <= 1 || isPaused) return;
 
@@ -84,7 +94,7 @@ export default function HeroSection({ onOpenBooking }: HeroSectionProps) {
     setCurrentIndex((prev) => (prev - 1 + slides.length) % slides.length);
   };
 
-  // Touch swipe support for mobile gesture (optional swipe gesture remains active)
+  // Touch swipe support for mobile gesture
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
   };
@@ -99,6 +109,11 @@ export default function HeroSection({ onOpenBooking }: HeroSectionProps) {
     touchStartX.current = null;
   };
 
+  // Current active slide configuration
+  const currentSlide = slides[currentIndex] || slides[0] || DEFAULT_SLIDES[0];
+  const isTextVisible = currentSlide?.showText !== false;
+  const isButtonVisible = currentSlide?.showButton !== false;
+
   return (
     <section
       id="hero"
@@ -106,9 +121,9 @@ export default function HeroSection({ onOpenBooking }: HeroSectionProps) {
       onMouseLeave={() => setIsPaused(false)}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
-      className="relative min-h-[820px] lg:min-h-[860px] flex items-center justify-center pt-20 sm:pt-24 pb-16 overflow-hidden bg-white select-none"
+      className="relative min-h-[750px] md:min-h-[820px] lg:min-h-[860px] flex items-center justify-center pt-20 sm:pt-24 pb-16 overflow-hidden bg-white select-none"
     >
-      {/* Background Slideshow Layer (Clean Seamless Transition) */}
+      {/* Background Slideshow Layer */}
       <div className="absolute inset-0 z-0 overflow-hidden">
         {slides.map((slide, idx) => {
           const isActive = idx === currentIndex;
@@ -117,7 +132,7 @@ export default function HeroSection({ onOpenBooking }: HeroSectionProps) {
               key={slide.id || idx}
               className={`absolute inset-0 transition-all duration-1000 ease-in-out ${
                 isActive
-                  ? 'opacity-85 scale-100 z-10'
+                  ? 'opacity-100 scale-100 z-10'
                   : 'opacity-0 scale-105 pointer-events-none z-0'
               }`}
             >
@@ -132,51 +147,121 @@ export default function HeroSection({ onOpenBooking }: HeroSectionProps) {
           );
         })}
 
-        {/* Soft atmospheric gradient overlays to ensure text readability */}
-        <div className="absolute inset-0 z-20 bg-gradient-to-t from-white via-white/40 to-white/70 pointer-events-none" />
-        <div className="absolute inset-0 z-20 bg-gradient-to-b from-white/90 via-transparent to-white pointer-events-none" />
+        {/* Soft atmospheric gradient overlays - reduced when font is disabled so custom banners with built-in text are crisp */}
+        <div
+          className={`absolute inset-0 z-20 transition-opacity duration-700 pointer-events-none ${
+            isTextVisible
+              ? 'opacity-100 bg-gradient-to-t from-white via-white/40 to-white/70'
+              : 'opacity-40 bg-gradient-to-t from-white/90 via-transparent to-white/60'
+          }`}
+        />
+        <div
+          className={`absolute inset-0 z-20 transition-opacity duration-700 pointer-events-none ${
+            isTextVisible
+              ? 'opacity-100 bg-gradient-to-b from-white/90 via-transparent to-white'
+              : 'opacity-30 bg-gradient-to-b from-white/80 via-transparent to-transparent'
+          }`}
+        />
       </div>
 
-      {/* Center Content Container */}
-      <div className="relative z-20 max-w-5xl mx-auto px-4 sm:px-6 text-center flex flex-col items-center">
-        {/* Top Badge with Active Slide Tag */}
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-50/95 border border-amber-300/80 shadow-sm mb-6 backdrop-blur-sm">
-          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-          <span className="font-space font-bold text-xs text-amber-900 tracking-wider">
-            JEEP ADVENTURE EXPERIENCE • YOGYAKARTA
-          </span>
-        </div>
-
-        {/* Main Headline */}
-        <h1 className="font-outfit font-black text-4xl sm:text-6xl md:text-7xl lg:text-[76px] tracking-tight leading-[1.08] text-slate-950 max-w-4xl mb-6">
-          Jelajahi Alam dengan{' '}
-          <span className="bg-gradient-to-r from-amber-600 via-amber-500 to-orange-600 bg-clip-text text-transparent drop-shadow-sm block sm:inline">
-            Cara yang Berbeda
-          </span>
-        </h1>
-
-        {/* Subtitle */}
-        <p className="font-jakarta text-base sm:text-xl text-slate-700 max-w-2xl leading-relaxed mb-10 font-normal">
-          Rasakan sensasi petualangan Jeep 4x4, taklukkan jalur lava track dan sungai berbatu, lalu temukan panorama magis di lereng sakral Gunung Merapi.
-        </p>
-
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto mb-14">
+      {/* Slide Navigation Arrows */}
+      {slides.length > 1 && (
+        <div className="absolute inset-x-3 sm:inset-x-6 top-1/2 -translate-y-1/2 z-30 flex justify-between pointer-events-none">
           <button
-            onClick={() => onOpenBooking ? onOpenBooking() : document.getElementById('paket-wisata')?.scrollIntoView({ behavior: 'smooth' })}
-            className="amber-gradient-btn w-full sm:w-auto px-8 py-4 rounded-xl font-space font-bold text-sm text-slate-950 shadow-lg shadow-amber-500/25 flex items-center justify-center gap-2.5 group cursor-pointer"
+            onClick={prevSlide}
+            aria-label="Slide sebelumnya"
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white/70 hover:bg-white text-slate-800 shadow-md backdrop-blur-md flex items-center justify-center transition-all hover:scale-105 pointer-events-auto cursor-pointer border border-white/60"
           >
-            <span>PESAN SEKARANG</span>
-            <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1 text-slate-950" />
+            <ChevronLeft className="w-5 h-5 text-slate-800" />
           </button>
-
-          <a
-            href="#paket-wisata"
-            className="w-full sm:w-auto px-8 py-4 rounded-xl font-space font-semibold text-sm text-slate-800 bg-white/80 hover:bg-white border border-slate-300/80 hover:border-slate-400 shadow-sm backdrop-blur-sm transition-all text-center"
+          <button
+            onClick={nextSlide}
+            aria-label="Slide berikutnya"
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white/70 hover:bg-white text-slate-800 shadow-md backdrop-blur-md flex items-center justify-center transition-all hover:scale-105 pointer-events-auto cursor-pointer border border-white/60"
           >
-            JELAJAHI RUTE
-          </a>
+            <ChevronRight className="w-5 h-5 text-slate-800" />
+          </button>
         </div>
+      )}
+
+      {/* Center Content Container */}
+      <div className="relative z-20 max-w-5xl mx-auto px-4 sm:px-6 text-center flex flex-col items-center justify-center w-full min-h-[600px]">
+        {/* Dynamic Typography Section (Only displayed if showText is ON for this slide) */}
+        <div
+          className={`transition-all duration-700 ease-in-out flex flex-col items-center w-full ${
+            isTextVisible
+              ? 'opacity-100 translate-y-0 max-h-[800px]'
+              : 'opacity-0 -translate-y-4 max-h-0 pointer-events-none overflow-hidden my-0'
+          }`}
+        >
+          {/* Top Badge with Active Slide Tag */}
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-50/95 border border-amber-300/80 shadow-sm mb-6 backdrop-blur-sm">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+            <span className="font-space font-bold text-xs text-amber-900 tracking-wider">
+              {currentSlide?.title || 'JEEP ADVENTURE EXPERIENCE • YOGYAKARTA'}
+            </span>
+          </div>
+
+          {/* Main Headline */}
+          <h1 className="font-outfit font-black text-4xl sm:text-6xl md:text-7xl lg:text-[76px] tracking-tight leading-[1.08] text-slate-950 max-w-4xl mb-6">
+            {currentSlide?.headline ? (
+              <span>{currentSlide.headline}</span>
+            ) : (
+              <>
+                Jelajahi Alam dengan{' '}
+                <span className="bg-gradient-to-r from-amber-600 via-amber-500 to-orange-600 bg-clip-text text-transparent drop-shadow-sm block sm:inline">
+                  Cara yang Berbeda
+                </span>
+              </>
+            )}
+          </h1>
+
+          {/* Subtitle */}
+          <p className="font-jakarta text-base sm:text-xl text-slate-700 max-w-2xl leading-relaxed mb-10 font-normal">
+            {currentSlide?.subheadline ||
+              'Rasakan sensasi petualangan Jeep 4x4, taklukkan jalur lava track dan sungai berbatu, lalu temukan panorama magis di lereng sakral Gunung Merapi.'}
+          </p>
+        </div>
+
+        {/* Action Buttons (Stay accessible or positioned neatly at bottom) */}
+        {isButtonVisible && (
+          <div className={`flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto transition-all duration-500 ${
+            isTextVisible ? 'mb-12 mt-2' : 'mt-auto pt-44 sm:pt-60 mb-6'
+          }`}>
+            <button
+              onClick={() => onOpenBooking ? onOpenBooking() : document.getElementById('paket-wisata')?.scrollIntoView({ behavior: 'smooth' })}
+              className="amber-gradient-btn w-full sm:w-auto px-8 py-4 rounded-xl font-space font-bold text-sm text-slate-950 shadow-xl shadow-amber-500/30 flex items-center justify-center gap-2.5 group cursor-pointer border border-amber-400/50"
+            >
+              <span>PESAN SEKARANG</span>
+              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1 text-slate-950" />
+            </button>
+
+            <a
+              href="#paket-wisata"
+              className="w-full sm:w-auto px-8 py-4 rounded-xl font-space font-semibold text-sm text-slate-900 bg-white/90 hover:bg-white border border-slate-300/90 hover:border-slate-400 shadow-md backdrop-blur-md transition-all text-center"
+            >
+              JELAJAHI RUTE
+            </a>
+          </div>
+        )}
+
+        {/* Slide Indicators (Dots) */}
+        {slides.length > 1 && (
+          <div className="flex items-center gap-2 mb-8 bg-white/60 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-slate-200/60 shadow-xs">
+            {slides.map((s, idx) => (
+              <button
+                key={s.id || idx}
+                onClick={() => setCurrentIndex(idx)}
+                aria-label={`Pindah ke slide ${idx + 1}`}
+                className={`transition-all duration-300 rounded-full cursor-pointer ${
+                  idx === currentIndex
+                    ? 'w-6 h-2 bg-amber-500 shadow-xs'
+                    : 'w-2 h-2 bg-slate-300 hover:bg-slate-400'
+                }`}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Scroll Indicator */}
         <a

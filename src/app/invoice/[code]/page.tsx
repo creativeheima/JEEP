@@ -9,19 +9,14 @@ import {
   Share2,
   CheckCircle2,
   Calendar,
-  Clock,
   Users,
   Car,
   MapPin,
   ShieldCheck,
   ArrowLeft,
   Phone,
-  QrCode,
-  Download,
   AlertCircle,
-  Sparkles,
-  ExternalLink,
-  Award
+  Clock,
 } from 'lucide-react';
 import { Booking } from '@/types/booking';
 
@@ -38,34 +33,38 @@ export default function InvoicePage() {
     fetch(`/api/bookings/${code}`)
       .then(res => res.json())
       .then(res => {
-        if (res.success && res.data) {
-          setBooking(res.data);
-        }
+        if (res.success && res.data) setBooking(res.data);
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, [code]);
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const isPending = booking?.approvalStatus === 'PENDING';
+  const isCancelled = booking?.approvalStatus === 'CANCELLED';
+  const isLunas = booking ? (booking.remainingAmount === 0 || booking.paymentStatus === 'LUNAS') : false;
+  const hasDp = booking ? booking.dpAmount > 0 : false;
+
+  const handlePrint = () => window.print();
 
   const handleShareWa = () => {
     if (!booking) return;
     const url = typeof window !== 'undefined' ? window.location.href : '';
-    const text = `Halo Kak ${booking.customerName}, berikut adalah E-Tiket & Invoice resmi Merapi Jeep Adventure Anda:%0A%0A` +
-      `📌 *Kode Booking:* ${booking.bookingCode}%0A` +
-      `🚙 *Paket:* ${booking.packageName}%0A` +
-      `📅 *Tanggal Tur:* ${booking.tourDate} (${booking.tourTime})%0A` +
-      `👥 *Peserta:* ${booking.paxCount} Orang (${booking.jeepCount} Jeep)%0A` +
-      `💰 *Total Deal:* Rp ${booking.totalAmount.toLocaleString('id-ID')}%0A` +
-      `✅ *DP Masuk:* Rp ${booking.dpAmount.toLocaleString('id-ID')}%0A` +
-      `⏳ *Sisa Pelunasan di Lokasi:* Rp ${booking.remainingAmount.toLocaleString('id-ID')}%0A%0A` +
-      `Buka e-Tiket lengkap disini:%0A${encodeURIComponent(url)}%0A%0A` +
-      `Tunjukkan e-tiket ini kepada petugas di Basecamp Kaliurang saat kedatangan. Salam Petualang! 🌋`;
-
-    const waUrl = `https://wa.me/${booking.customerPhone.replace(/^0/, '62').replace(/[^0-9]/g, '')}?text=${text}`;
-    window.open(waUrl, '_blank');
+    const text = isPending
+      ? `Halo Kak ${booking.customerName}, berikut info pengajuan reservasi Merapi Jeep Adventure Anda:%0A%0A` +
+        `Kode Booking: ${booking.bookingCode}%0A` +
+        `Paket: ${booking.packageName}%0A` +
+        `Tanggal: ${booking.tourDate} (${booking.tourTime})%0A` +
+        `Status: MENUNGGU APPROVAL ADMIN%0A%0A` +
+        `Cek Status: ${encodeURIComponent(url)}%0A%0AAdmin basecamp kami akan segera menghubungi untuk konfirmasi ketersediaan armada dan DP.`
+      : `Halo Kak ${booking.customerName}, berikut E-Tiket resmi Merapi Jeep Adventure:%0A%0A` +
+        `Kode: ${booking.bookingCode}%0A` +
+        `Paket: ${booking.packageName}%0A` +
+        `Tanggal: ${booking.tourDate} (${booking.tourTime})%0A` +
+        `Total: Rp ${booking.totalAmount.toLocaleString('id-ID')}%0A` +
+        `DP: Rp ${booking.dpAmount.toLocaleString('id-ID')}%0A` +
+        `Sisa: Rp ${booking.remainingAmount.toLocaleString('id-ID')}%0A%0A` +
+        `E-Tiket: ${encodeURIComponent(url)}%0A%0ATunjukkan tiket di Basecamp Kaliurang. Salam Petualang!`;
+    window.open(`https://wa.me/${booking.customerPhone.replace(/^0/, '62').replace(/[^0-9]/g, '')}?text=${text}`, '_blank');
   };
 
   const handleCopyLink = () => {
@@ -78,10 +77,10 @@ export default function InvoicePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#070b14] text-white">
+      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
         <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="font-space text-sm font-semibold text-slate-300">Memuat E-Tiket & Invoice Resmi...</p>
+          <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="font-space text-xs font-semibold text-slate-300">Memuat E-Tiket...</p>
         </div>
       </div>
     );
@@ -89,355 +88,337 @@ export default function InvoicePage() {
 
   if (!booking) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#070b14] p-4 text-white">
-        <div className="max-w-md w-full bg-slate-900 rounded-3xl p-8 border border-slate-800 text-center shadow-2xl space-y-5">
-          <div className="w-16 h-16 rounded-2xl bg-red-500/10 text-red-400 flex items-center justify-center mx-auto border border-red-500/20">
-            <AlertCircle className="w-8 h-8" />
-          </div>
-          <h2 className="font-outfit font-black text-2xl text-white">Tiket Tidak Ditemukan</h2>
+      <div className="min-h-screen flex items-center justify-center bg-slate-900 p-4 text-white">
+        <div className="max-w-sm w-full bg-slate-800 rounded-2xl p-8 border border-slate-700 text-center space-y-4">
+          <AlertCircle className="w-10 h-10 text-red-400 mx-auto" />
+          <h2 className="font-outfit font-black text-xl text-white">Tiket Tidak Ditemukan</h2>
           <p className="font-work text-sm text-slate-400">
-            Kode booking <span className="font-mono font-bold text-amber-400">{code}</span> tidak terdaftar dalam sistem reservasi kami.
+            Kode <span className="font-mono font-bold text-amber-400">{code}</span> tidak terdaftar.
           </p>
-          <div className="pt-2">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-space font-bold text-xs transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Kembali ke Beranda</span>
-            </Link>
-          </div>
+          <Link href="/" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-space font-bold text-xs transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+            Kembali ke Beranda
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#070b14] py-8 sm:py-12 px-4 sm:px-6 lg:px-8 selection:bg-amber-500 selection:text-slate-950 print:bg-white print:py-0 print:px-0">
-      
-      {/* Top Floating Control Bar (Hidden When Printing) */}
-      <div className="max-w-3xl mx-auto mb-6 flex flex-wrap items-center justify-between gap-4 print:hidden">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-xs font-space font-bold text-slate-300 hover:text-white bg-slate-900/80 hover:bg-slate-900 px-4 py-2.5 rounded-xl border border-slate-800 shadow-md transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4 text-amber-400" />
-          <span>Kembali ke Beranda</span>
-        </Link>
+    <>
+      <style>{`
+        @media print {
+          @page { size: A4 portrait; margin: 8mm 10mm; }
+          html, body { margin: 0; padding: 0; background: #fff !important; }
+          .no-print { display: none !important; }
+          .ticket-page-bg { background: #fff !important; padding: 0 !important; min-height: auto !important; }
+          .ticket-card { box-shadow: none !important; border-radius: 6px !important; page-break-inside: avoid; max-width: 100% !important; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
+      `}</style>
 
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={handleCopyLink}
-            className="inline-flex items-center gap-1.5 text-xs font-space font-bold text-slate-300 bg-slate-900/80 hover:bg-slate-900 px-3.5 py-2.5 rounded-xl border border-slate-800 transition-colors cursor-pointer"
-          >
-            <Share2 className="w-3.5 h-3.5 text-slate-400" />
-            <span>{copied ? 'Tautan Disalin!' : 'Bagikan'}</span>
-          </button>
+      <div className="ticket-page-bg min-h-screen bg-slate-900 py-8 px-4 sm:px-6">
 
-          <button
-            onClick={handleShareWa}
-            className="inline-flex items-center gap-1.5 text-xs font-space font-bold text-white bg-emerald-600 hover:bg-emerald-500 px-4 py-2.5 rounded-xl shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
-          >
-            <Phone className="w-3.5 h-3.5" />
-            <span>Kirim ke WhatsApp</span>
-          </button>
-
-          <button
-            onClick={handlePrint}
-            className="amber-gradient-btn inline-flex items-center gap-1.5 text-xs font-space font-black text-slate-950 px-5 py-2.5 rounded-xl shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span>Cetak Tiket / PDF</span>
-          </button>
+        <div className="no-print max-w-2xl mx-auto mb-5 flex flex-wrap items-center justify-between gap-3">
+          <Link href="/" className="inline-flex items-center gap-2 text-xs font-space font-bold text-slate-300 hover:text-white bg-slate-800 px-4 py-2.5 rounded-xl border border-slate-700 transition-colors">
+            <ArrowLeft className="w-4 h-4 text-amber-400" />
+            Kembali
+          </Link>
+          <div className="flex items-center gap-2">
+            <button onClick={handleCopyLink} className="inline-flex items-center gap-1.5 text-xs font-space font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 px-3.5 py-2.5 rounded-xl border border-slate-700 transition-colors cursor-pointer">
+              <Share2 className="w-3.5 h-3.5 text-slate-400" />
+              {copied ? 'Disalin!' : 'Bagikan'}
+            </button>
+            <button onClick={handleShareWa} className="inline-flex items-center gap-1.5 text-xs font-space font-bold text-white bg-emerald-600 hover:bg-emerald-500 px-4 py-2.5 rounded-xl shadow transition-all cursor-pointer">
+              <Phone className="w-3.5 h-3.5" />
+              WA Tamu
+            </button>
+            <button onClick={handlePrint} className="inline-flex items-center gap-1.5 text-xs font-space font-black text-slate-950 bg-amber-400 hover:bg-amber-300 px-5 py-2.5 rounded-xl shadow transition-all cursor-pointer">
+              <Printer className="w-3.5 h-3.5" />
+              Cetak / PDF
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* Main Luxury Boarding Pass & Invoice Card */}
-      <div className="max-w-3xl mx-auto bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden text-slate-900 print:shadow-none print:border-none print:rounded-none">
-        
-        {/* Luxury Header Banner */}
-        <div className="bg-[#0a0f1d] text-white p-6 sm:p-8 relative overflow-hidden">
-          {/* Subtle gold grid & light glow */}
-          <div className="absolute top-0 right-0 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-          
-          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="relative h-14 w-auto shrink-0">
-                <Image
-                  src="/images/logo.png"
-                  alt="Merapi Jeep 4x4 Adventure Tour"
-                  width={2171}
-                  height={724}
-                  className="h-14 w-auto object-contain"
-                />
-              </div>
-              <div className="border-l-0 sm:border-l sm:border-slate-800 sm:pl-4">
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded bg-amber-400 text-slate-950 text-[10px] font-space font-black uppercase">
-                    OFFICIAL 4X4 PASS
-                  </span>
-                  <span className="text-[11px] font-mono text-slate-400">
-                    ID: {booking.bookingCode}
-                  </span>
-                </div>
-                <p className="font-space text-xs text-amber-400 tracking-widest uppercase mt-1 font-bold">
-                  E-TIKET & INVOICE RESMI
+        <div className="ticket-card max-w-2xl mx-auto bg-white rounded-2xl overflow-hidden shadow-2xl border border-slate-200 text-slate-900">
+
+          {/* Top dark header */}
+          <div className="bg-[#090e1c] px-6 py-3.5 flex items-center justify-between relative overflow-hidden">
+            <div className="absolute right-0 top-0 w-56 h-full bg-amber-500/10 blur-2xl rounded-full pointer-events-none" />
+            <div className="flex items-center gap-3 relative z-10">
+              <Image src="/images/logo.png" alt="Merapi Jeep 4x4" width={2171} height={724} className="h-8 w-auto object-contain" />
+              <div className="border-l border-slate-700 pl-3">
+                <p className="font-space text-[9px] text-amber-400 font-bold tracking-widest uppercase">
+                  {isPending ? 'Formulir Reservasi Wisata' : 'E-Tiket & Invoice Resmi'}
                 </p>
-                <div className="flex items-center gap-2 text-[11px] font-work text-slate-400 mt-0.5">
-                  <span>Basecamp Kaliurang Barat</span>
-                  <span>•</span>
-                  <span>Paguyuban Sleman, DIY</span>
+                <p className="font-work text-[10px] text-slate-400">Basecamp Kaliurang Barat &bull; Sleman, DIY</p>
+              </div>
+            </div>
+
+            {/* Approval badge in header */}
+            <div className="relative z-10 text-right shrink-0">
+              {isPending ? (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-space font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                  <Clock className="w-2.5 h-2.5 text-amber-400 animate-pulse" />
+                  <span>MENUNGGU APPROVAL</span>
                 </div>
-              </div>
-            </div>
-
-            {/* Official Stamp */}
-            <div className="self-start sm:self-auto text-left sm:text-right">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-space font-black text-xs uppercase tracking-wider mb-1">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>APPROVED & TERVERIFIKASI</span>
-              </div>
-              <div className="font-mono text-[11px] text-slate-400 block">
-                Diterbitkan: {new Date(booking.approvedAt || booking.createdAt).toLocaleDateString('id-ID', {
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric'
-                })}
-              </div>
+              ) : isCancelled ? (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-space font-black uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/40">
+                  <AlertCircle className="w-2.5 h-2.5 text-red-400" />
+                  <span>DIBATALKAN</span>
+                </div>
+              ) : isLunas ? (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-space font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" />
+                  <span>LUNAS</span>
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-space font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" />
+                  <span>APPROVED</span>
+                </div>
+              )}
+              <p className="font-mono text-[9px] text-slate-500 mt-0.5">
+                {new Date(booking.approvedAt || booking.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </p>
             </div>
           </div>
-        </div>
 
-        {/* Perforated Stub Line with Circles */}
-        <div className="relative py-2 bg-slate-900 border-t border-b border-slate-800">
-          <div className="border-b border-dashed border-slate-700 w-full" />
-          <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#070b14] print:bg-white" />
-          <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#070b14] print:bg-white" />
-        </div>
-
-        {/* Booking Code Banner */}
-        <div className="bg-amber-50/90 border-b border-amber-200/80 px-6 sm:px-8 py-5 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <span className="text-[10px] font-space font-bold text-amber-800 tracking-widest uppercase block">
-              NOMOR REGISTRASI / KODE TIKET:
-            </span>
-            <span className="font-outfit font-black text-3xl sm:text-4xl text-slate-950 font-mono tracking-wider">
-              {booking.bookingCode}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="text-left sm:text-right">
-              <span className="text-[10px] font-space font-bold text-slate-500 uppercase block">
-                Status Pembayaran:
-              </span>
-              <span className={`inline-block font-space font-black text-xs px-3.5 py-1.5 rounded-lg uppercase tracking-wider ${
-                booking.remainingAmount === 0
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'bg-amber-500 text-slate-950 shadow-sm'
+          {/* Yellow strip: Booking code & Payment/Approval Status */}
+          <div className="bg-amber-50 border-y border-amber-200 px-6 py-2.5 flex items-center justify-between">
+            <div>
+              <p className="text-[8.5px] font-space font-bold text-amber-700 uppercase tracking-widest">
+                {isPending ? 'Nomor Registrasi / Kode Booking' : 'Nomor Registrasi / Kode Tiket'}
+              </p>
+              <p className="font-outfit font-black text-[22px] text-slate-950 tracking-wider leading-none mt-0.5">{booking.bookingCode}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[8.5px] font-space font-bold text-slate-500 uppercase">
+                {isPending ? 'Status Reservasi' : 'Status Pembayaran'}
+              </p>
+              <span className={`inline-block font-space font-black text-[10px] px-3 py-1 rounded-lg uppercase mt-1 ${
+                isPending
+                  ? (hasDp ? 'bg-amber-400 text-slate-950' : 'bg-amber-200 text-amber-950 border border-amber-300')
+                  : isCancelled
+                  ? 'bg-red-500 text-white'
+                  : isLunas
+                  ? 'bg-emerald-600 text-white'
+                  : (hasDp ? 'bg-amber-500 text-slate-950' : 'bg-blue-600 text-white')
               }`}>
-                {booking.remainingAmount === 0 ? '✓ SUDAH LUNAS' : '✓ DP MASUK (TERVERIFIKASI)'}
+                {isPending
+                  ? (hasDp ? 'MENUNGGU VERIFIKASI DP' : 'MENUNGGU APPROVAL')
+                  : isCancelled
+                  ? 'DIBATALKAN'
+                  : isLunas
+                  ? 'LUNAS'
+                  : (hasDp ? 'DP TERVERIFIKASI' : 'BAYAR DI BASECAMP')
+                }
               </span>
             </div>
           </div>
-        </div>
 
-        {/* Content Body */}
-        <div className="p-6 sm:p-8 space-y-8 font-work text-xs">
-          
-          {/* 2-Column Boarding Pass Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            {/* Box 1: Informasi Tamu */}
-            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200/80 space-y-3">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-                <span className="font-outfit font-bold text-xs uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
-                  <Users className="w-4 h-4 text-amber-600" />
-                  <span>DATA TAMU & PESERTA</span>
-                </span>
-                <span className="font-space text-[10px] font-bold text-slate-500 uppercase">
-                  PRIMARY CONTACT
-                </span>
+          {/* Alert Notice for Pending Bookings */}
+          {isPending && (
+            <div className="mx-5 mt-4 p-3 rounded-xl bg-amber-50/90 border border-amber-300 flex items-start gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-amber-200/80 border border-amber-300 flex items-center justify-center shrink-0 text-amber-800">
+                <Clock className="w-4 h-4 animate-pulse" />
               </div>
-
-              <div className="space-y-2 text-slate-800">
-                <div className="flex justify-between py-1 border-b border-slate-200/50">
-                  <span className="text-slate-500">Nama Pemesan:</span>
-                  <span className="font-bold text-slate-950 text-sm">{booking.customerName}</span>
-                </div>
-                <div className="flex justify-between py-1 border-b border-slate-200/50">
-                  <span className="text-slate-500">Nomor WhatsApp:</span>
-                  <span className="font-mono font-bold text-slate-900">{booking.customerPhone}</span>
-                </div>
-                <div className="flex justify-between py-1 border-b border-slate-200/50">
-                  <span className="text-slate-500">Jumlah Penumpang:</span>
-                  <span className="font-bold text-slate-900">{booking.paxCount} Orang Dewasa</span>
-                </div>
-                <div className="flex justify-between py-1">
-                  <span className="text-slate-500">Alokasi Armada:</span>
-                  <span className="font-bold text-slate-900">{booking.jeepCount} Unit Jeep 4x4</span>
-                </div>
+              <div className="text-[11px] leading-relaxed text-amber-950 flex-1">
+                <p className="font-bold font-outfit text-amber-900 text-xs">
+                  Permintaan Reservasi Sedang Menunggu Konfirmasi & Approval Admin
+                </p>
+                <p className="text-[10.5px] text-amber-800/90 mt-0.5 font-work leading-snug">
+                  Data booking Anda telah tercatat di sistem kami. Admin Basecamp Merapi Jeep Adventure akan segera menghubungi WhatsApp Anda (<strong>{booking.customerPhone}</strong>) untuk memastikan ketersediaan armada, negosiasi harga deal, serta instruksi DP. Setelah disetujui oleh admin, tiket resmi ini akan aktif dan terverifikasi secara otomatis.
+                </p>
               </div>
-            </div>
-
-            {/* Box 2: Jadwal & Armada Tur */}
-            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200/80 space-y-3">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-                <span className="font-outfit font-bold text-xs uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
-                  <Calendar className="w-4 h-4 text-amber-600" />
-                  <span>JADWAL OPERASIONAL TUR</span>
-                </span>
-                <span className="font-space text-[10px] font-bold text-slate-500 uppercase">
-                  CONFIRMED SCHEDULE
-                </span>
-              </div>
-
-              <div className="space-y-2 text-slate-800">
-                <div className="flex justify-between py-1 border-b border-slate-200/50">
-                  <span className="text-slate-500">Paket Wisata:</span>
-                  <span className="font-bold text-amber-800">{booking.packageName}</span>
-                </div>
-                <div className="flex justify-between py-1 border-b border-slate-200/50">
-                  <span className="text-slate-500">Tanggal Keberangkatan:</span>
-                  <span className="font-bold text-slate-950">{booking.tourDate}</span>
-                </div>
-                <div className="flex justify-between py-1 border-b border-slate-200/50">
-                  <span className="text-slate-500">Waktu Kumpul Basecamp:</span>
-                  <span className="font-bold text-slate-950 font-space text-xs">{booking.tourTime}</span>
-                </div>
-                <div className="flex justify-between py-1">
-                  <span className="text-slate-500">Driver & No. Polisi:</span>
-                  <span className="font-bold text-slate-900">
-                    {booking.driverName || 'Driver Terjadwal'} ({booking.jeepNumber || 'Unit 4x4'})
-                  </span>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          {/* Rincian Finansial & Deal Invoice Table */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="font-outfit font-bold text-sm text-slate-950 uppercase tracking-wider">
-                RINCIAN PEMBAYARAN & REKAP KESEPAKATAN
-              </h3>
-              <span className="text-[10px] font-space text-slate-500 uppercase">
-                Metode DP: {booking.paymentMethod}
-              </span>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-              <table className="w-full text-left">
-                <thead className="bg-slate-100 font-space text-[11px] text-slate-700 uppercase border-b border-slate-200">
-                  <tr>
-                    <th className="p-3.5">Item Deskripsi Layanan</th>
-                    <th className="p-3.5 text-center">Unit</th>
-                    <th className="p-3.5 text-right">Nominal (Rp)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-800">
-                  <tr>
-                    <td className="p-4">
-                      <div className="font-bold text-sm text-slate-950">{booking.packageName}</div>
-                      <div className="text-slate-500 text-[11px] mt-0.5">
-                        Termasuk Unit 4x4, Driver berpengalaman, BBM, Retribusi Pos Desa, Asuransi Resmi Jasa Raharja, dan Bantuan Foto Video.
-                      </div>
-                    </td>
-                    <td className="p-4 text-center font-mono font-bold">{booking.jeepCount} Jeep</td>
-                    <td className="p-4 text-right font-mono font-bold text-sm text-slate-900">
-                      Rp {booking.totalAmount.toLocaleString('id-ID')}
-                    </td>
-                  </tr>
-                </tbody>
-                <tfoot className="bg-slate-50 border-t border-slate-200 font-mono text-xs">
-                  <tr>
-                    <td colSpan={2} className="p-3.5 text-right font-space font-semibold text-slate-600">
-                      Total Kesepakatan (Deal WA):
-                    </td>
-                    <td className="p-3.5 text-right font-bold text-slate-900 text-sm">
-                      Rp {booking.totalAmount.toLocaleString('id-ID')}
-                    </td>
-                  </tr>
-                  <tr className="bg-emerald-50/60 text-emerald-800">
-                    <td colSpan={2} className="p-3.5 text-right font-space font-bold">
-                      Uang Muka / DP Diterima ({booking.paymentMethod}):
-                    </td>
-                    <td className="p-3.5 text-right font-black text-sm text-emerald-700">
-                      - Rp {booking.dpAmount.toLocaleString('id-ID')}
-                    </td>
-                  </tr>
-                  <tr className="bg-amber-100/80 text-slate-950 font-bold">
-                    <td colSpan={2} className="p-4 text-right font-outfit uppercase text-xs tracking-wider">
-                      Sisa Pembayaran / Pelunasan di Lokasi:
-                    </td>
-                    <td className="p-4 text-right font-black text-amber-950 text-base">
-                      {booking.remainingAmount === 0
-                        ? 'LUNAS (Rp 0)'
-                        : `Rp ${booking.remainingAmount.toLocaleString('id-ID')}`}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </div>
-
-          {/* Notes */}
-          {booking.notes && (
-            <div className="p-4 rounded-xl bg-amber-50/60 border border-amber-200 text-slate-800">
-              <span className="font-space font-bold text-amber-900 block mb-1">Catatan Khusus dari Tamu:</span>
-              <p className="italic text-slate-700">"{booking.notes}"</p>
             </div>
           )}
 
-          {/* Basecamp Location & QR Check-in Box */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 pt-4 border-t border-slate-200 items-center">
-            <div className="md:col-span-8 space-y-3">
-              <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-amber-600 shrink-0" />
-                <h4 className="font-outfit font-bold text-sm uppercase text-slate-950">
-                  LOKASI CHECK-IN BASECAMP RESMI
-                </h4>
-              </div>
-              <p className="text-slate-600 leading-relaxed text-xs">
-                Basecamp Kaliurang Barat, Hargobinangun, Pakem, Sleman, D.I. Yogyakarta 55582. Mohon hadir 15 menit sebelum jam keberangkatan untuk pembagian perlengkapan dan arahan keselamatan bersama driver.
-              </p>
-              
-              <div className="flex flex-wrap items-center gap-4 text-slate-600 font-space text-[11px] pt-1">
-                <div className="flex items-center gap-1.5 text-emerald-700 font-semibold">
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>Garansi Asuransi Jiwa Jasa Raharja</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-slate-700">
-                  <Car className="w-4 h-4 text-amber-600" />
-                  <span>Armada 4x4 SNI Bersertifikasi</span>
-                </div>
+          {/* Customer & Operational Schedule Grid */}
+          <div className="px-5 pt-4 pb-3 grid grid-cols-2 gap-5 text-[10.5px] font-work">
+            <div>
+              <SectionTitle icon={<Users className="w-3 h-3" />} label="Data Tamu & Peserta" />
+              <div className="mt-2 space-y-1.5">
+                <InfoRow label="Nama Pemesan" value={booking.customerName} bold />
+                <InfoRow label="No. WhatsApp" value={booking.customerPhone} mono />
+                <InfoRow label="Jumlah Peserta" value={`${booking.paxCount} Orang`} bold />
+                <InfoRow label="Alokasi Jeep" value={`${booking.jeepCount} Unit Jeep 4x4`} bold />
               </div>
             </div>
-
-            {/* Simulated QR Code */}
-            <div className="md:col-span-4 bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col items-center justify-center text-center space-y-1.5">
-              <div className="p-2.5 bg-white rounded-xl shadow-xs border border-slate-200">
-                <QrCode className="w-20 h-20 text-slate-950" />
+            <div>
+              <SectionTitle icon={<Calendar className="w-3 h-3" />} label="Jadwal Operasional Tur" />
+              <div className="mt-2 space-y-1.5">
+                <InfoRow label="Paket Wisata" value={booking.packageName} bold amber />
+                <InfoRow label="Tanggal Keberangkatan" value={booking.tourDate} bold />
+                <InfoRow label="Jam Kumpul Basecamp" value={booking.tourTime} bold />
+                <InfoRow
+                  label="Driver / Armada"
+                  value={
+                    isPending
+                      ? 'Menunggu Penugasan Driver'
+                      : `${booking.driverName || 'Terjadwal'} - ${booking.jeepNumber || 'Unit 4x4'}`
+                  }
+                />
               </div>
-              <span className="font-space font-bold text-[10px] text-slate-500 uppercase tracking-widest">
-                VERIFIED TICKET PASS
-              </span>
-              <span className="font-mono font-bold text-xs text-amber-900">
-                {booking.bookingCode}
-              </span>
             </div>
           </div>
 
-        </div>
+          {/* Financial Breakdown Table */}
+          <div className="px-5 pb-3">
+            <div className="rounded-xl border border-slate-200 overflow-hidden">
+              <div className="bg-slate-100 grid grid-cols-12 px-3.5 py-1.5 text-[8.5px] font-space font-bold uppercase text-slate-500 border-b border-slate-200">
+                <span className="col-span-7">Deskripsi Layanan</span>
+                <span className="col-span-2 text-center">Qty</span>
+                <span className="col-span-3 text-right">Nominal</span>
+              </div>
+              <div className="grid grid-cols-12 px-3.5 py-2.5 text-[10.5px] border-b border-slate-100 items-start">
+                <div className="col-span-7">
+                  <p className="font-bold text-slate-950">{booking.packageName}</p>
+                  <p className="text-[8.5px] text-slate-400 mt-0.5">Unit 4x4, driver, BBM, retribusi pos desa, asuransi Jasa Raharja</p>
+                </div>
+                <div className="col-span-2 text-center font-mono font-bold text-slate-700">{booking.jeepCount}x</div>
+                <div className="col-span-3 text-right font-mono font-bold text-slate-900">
+                  Rp {booking.totalAmount.toLocaleString('id-ID')}
+                </div>
+              </div>
+              <div className="divide-y divide-slate-100">
+                <FinRow
+                  label={isPending ? 'Estimasi Total' : 'Total Kesepakatan'}
+                  value={`Rp ${booking.totalAmount.toLocaleString('id-ID')}`}
+                />
+                <FinRow
+                  label={`Uang Muka / DP (${booking.paymentMethod})`}
+                  value={
+                    isPending && !hasDp
+                      ? 'Rp 0 (Belum Bayar DP)'
+                      : `- Rp ${booking.dpAmount.toLocaleString('id-ID')}`
+                  }
+                  green={hasDp}
+                />
+                <FinRow
+                  label={isPending ? 'Estimasi Sisa / Pelunasan' : 'Sisa Pelunasan di Lokasi'}
+                  value={isLunas ? 'LUNAS (Rp 0)' : `Rp ${booking.remainingAmount.toLocaleString('id-ID')}`}
+                  highlight
+                  isLunas={isLunas}
+                />
+              </div>
+            </div>
+          </div>
 
-        {/* Footer Note */}
-        <div className="bg-slate-50 border-t border-slate-200 p-4 text-center text-slate-500 font-work text-[11px]">
-          Dokumen ini merupakan e-Tiket & Bukti Pembayaran Resmi yang sah diterbitkan oleh Operasional Merapi Jeep Adventure Tour.
-        </div>
+          {booking.notes && (
+            <div className="px-5 pb-3">
+              <div className="px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-[9.5px] font-work text-slate-700">
+                <span className="font-bold text-amber-800">Catatan: </span>
+                <span className="italic">"{booking.notes}"</span>
+              </div>
+            </div>
+          )}
 
+          <div className="px-5 pb-4 grid grid-cols-12 gap-3 items-start">
+            <div className="col-span-8 space-y-1.5">
+              <p className="font-outfit font-bold text-[8.5px] uppercase text-amber-700 flex items-center gap-1">
+                <MapPin className="w-3 h-3 shrink-0" /> Lokasi Check-In Basecamp Resmi
+              </p>
+              <p className="text-[9.5px] text-slate-500 leading-relaxed">
+                Basecamp Kaliurang Barat, Hargobinangun, Pakem, Sleman, D.I. Yogyakarta 55582.
+                Hadir <strong className="text-slate-700">15 menit lebih awal</strong> untuk perlengkapan dan safety briefing.
+              </p>
+              <div className="flex flex-wrap gap-3 pt-0.5">
+                <SmallBadge icon={<ShieldCheck className="w-2.5 h-2.5 text-emerald-600" />} label="Asuransi Jasa Raharja" />
+                <SmallBadge icon={<Car className="w-2.5 h-2.5 text-amber-600" />} label="Armada 4x4 Bersertifikasi" />
+              </div>
+            </div>
+            <div className="col-span-4 flex flex-col items-center justify-center bg-slate-50 rounded-xl py-2.5 px-3 border border-slate-200 text-center space-y-1">
+              <div className="w-14 h-14 grid grid-cols-4 gap-[2px] p-1 bg-white rounded-md border border-slate-200">
+                {Array.from({ length: 16 }).map((_, i) => (
+                  <div key={i} className={`rounded-[1px] ${
+                    isPending
+                      ? [0,2,5,7,8,10,13,15].includes(i) ? 'bg-amber-600' : 'bg-slate-100'
+                      : [0,1,3,4,6,8,9,10,12,15].includes(i) ? 'bg-slate-950' : 'bg-slate-100'
+                  }`} />
+                ))}
+              </div>
+              <p className="font-space font-bold text-[7.5px] text-slate-400 uppercase tracking-widest">
+                {isPending ? 'MENUNGGU APPROVAL' : isCancelled ? 'VOID PASS' : 'VERIFIED PASS'}
+              </p>
+              <p className="font-mono font-black text-[9px] text-amber-800">{booking.bookingCode}</p>
+            </div>
+          </div>
+
+          <div className="bg-slate-900 px-5 py-2.5 flex items-center justify-between">
+            <p className="text-[8.5px] font-work text-slate-400">
+              Dokumen resmi Merapi Jeep Adventure Tour &bull; {new Date(booking.createdAt).getFullYear()}
+            </p>
+            <p className="font-mono text-[8.5px] text-amber-400 font-bold">{booking.bookingCode}</p>
+          </div>
+
+        </div>
       </div>
+    </>
+  );
+}
 
+function SectionTitle({ icon, label }: { icon: React.ReactNode; label: string }) {
+  return (
+    <p className="font-outfit font-bold text-[8.5px] uppercase tracking-widest text-amber-700 flex items-center gap-1 border-b border-slate-200 pb-1">
+      {icon} {label}
+    </p>
+  );
+}
+
+function InfoRow({
+  label,
+  value,
+  bold,
+  mono,
+  amber,
+}: {
+  label: string;
+  value: string;
+  bold?: boolean;
+  mono?: boolean;
+  amber?: boolean;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-1 last:border-0">
+      <span className="text-slate-400 shrink-0 text-[10px]">{label}:</span>
+      <span className={`text-right text-[10.5px] ${bold ? 'font-bold text-slate-900' : 'text-slate-700'} ${mono ? 'font-mono' : ''} ${amber ? 'text-amber-800' : ''}`}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function FinRow({
+  label,
+  value,
+  green,
+  highlight,
+  isLunas,
+}: {
+  label: string;
+  value: string;
+  green?: boolean;
+  highlight?: boolean;
+  isLunas?: boolean;
+}) {
+  return (
+    <div className={`grid grid-cols-12 px-3.5 py-1.5 ${highlight ? (isLunas ? 'bg-emerald-50' : 'bg-amber-100/70') : 'bg-slate-50'}`}>
+      <span className={`col-span-9 text-right pr-3 font-space text-[9px] font-semibold ${green ? 'text-emerald-700' : highlight ? 'text-slate-800 font-bold uppercase text-[8.5px]' : 'text-slate-600'}`}>
+        {label}:
+      </span>
+      <span className={`col-span-3 text-right font-black text-[10px] ${green ? 'text-emerald-700' : highlight ? (isLunas ? 'text-emerald-700' : 'text-amber-900') : 'text-slate-900'}`}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function SmallBadge({ icon, label }: { icon: React.ReactNode; label: string }) {
+  return (
+    <div className="flex items-center gap-1 text-[8.5px] font-space font-semibold text-slate-600">
+      {icon}
+      <span>{label}</span>
     </div>
   );
 }
