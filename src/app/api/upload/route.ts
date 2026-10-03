@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import {
+  supabase,
+  isSupabaseConfigured,
+  getSupabaseClient,
+  getSupabaseEnvDiagnostics,
+  getSupabaseServiceRoleKey,
+} from '@/lib/supabase';
 
 /**
  * Upload foto/video dari halaman admin.
@@ -21,17 +27,19 @@ const MAX_IMAGE = 15 * 1024 * 1024; // 15 MB
 const MAX_VIDEO = 200 * 1024 * 1024; // 200 MB
 const ALLOWED_FOLDERS = ['gallery', 'hero', 'collage', 'packages', 'misc'];
 
-const usingServiceRole = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+function isUsingServiceRole() {
+  return Boolean(getSupabaseServiceRoleKey());
+}
 
 /** Pesan error Supabase yang mudah dipahami admin. */
 function explainStorageError(message: string): string {
   if (/row-level security|not authorized|unauthorized|403/i.test(message)) {
-    return usingServiceRole
+    return isUsingServiceRole()
       ? `Supabase menolak upload (izin storage): ${message}`
-      : 'Supabase menolak upload karena server memakai ANON KEY. Isi SUPABASE_SERVICE_ROLE_KEY di .env.local / environment hosting, lalu restart server.';
+      : 'Supabase menolak upload karena server memakai ANON KEY. Isi SUPABASE_SERVICE_ROLE_KEY di .env.local / Environment Variables Vercel, lalu restart/redeploy server.';
   }
   if (/bucket not found/i.test(message)) {
-    return 'Bucket "media" belum ada. Jalankan bagian "8. STORAGE" di supabase/schema.sql lewat SQL Editor Supabase, atau isi SUPABASE_SERVICE_ROLE_KEY agar dibuat otomatis.';
+    return 'Bucket "media" belum ada. Buka Supabase -> Storage -> buat bucket bernama "media" (centang Public), atau jalankan bagian "8. STORAGE" di supabase/schema.sql.';
   }
   return `Supabase Storage: ${message}`;
 }
@@ -110,9 +118,10 @@ export async function POST(request: Request) {
     const filePath = buildPath(folder, file.name);
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    if (isSupabaseConfigured() && supabase) {
+    const supaClient = getSupabaseClient();
+    if (isSupabaseConfigured() && supaClient) {
       const doUpload = () =>
-        supabase!.storage.from(BUCKET).upload(filePath, buffer, {
+        supaClient.storage.from(BUCKET).upload(filePath, buffer, {
           contentType: file.type,
           cacheControl: '31536000',
           upsert: false,
@@ -122,20 +131,21 @@ export async function POST(request: Request) {
         ({ error } = await doUpload());
       }
       if (error) throw new Error(explainStorageError(error.message));
-      const { data } = supabase.storage.from(BUCKET).getPublicUrl(filePath);
+      const { data } = supaClient.storage.from(BUCKET).getPublicUrl(filePath);
       return NextResponse.json({ success: true, url: data.publicUrl, storage: 'supabase' }, { status: 201 });
     }
 
-    // Fallback lokal (development / VPS)
+    // Fallback lokal (hanya bisa berfungsi di laptop / development)
     try {
       const dest = path.join(process.cwd(), 'public', 'uploads', filePath);
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.writeFileSync(dest, buffer);
       return NextResponse.json({ success: true, url: `/uploads/${filePath}`, storage: 'local' }, { status: 201 });
-    } catch (localErr) {
-      console.error('[upload] local storage fallback error:', localErr);
+    } catch {
+      const diag = getSupabaseEnvDiagnostics();
+      const statusText = `URL: ${diag.hasUrl ? 'Terbaca' : 'KOSONG'}, ANON_KEY: ${diag.hasAnonKey ? 'Terbaca' : 'KOSONG'}, SERVICE_KEY: ${diag.hasServiceRoleKey ? 'Terbaca' : 'KOSONG'}`;
       throw new Error(
-        'Server tidak bisa menyimpan file. Hubungkan Supabase (isi env SUPABASE) atau gunakan opsi Link Google Drive.'
+        `Server Vercel belum membaca Environment Variables Supabase (${statusText}). Silakan periksa Vercel Settings > Environment Variables, pastikan terpilih "Production", lalu klik Redeploy.`
       );
     }
   } catch (error) {
