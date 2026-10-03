@@ -43,18 +43,22 @@ import {
   MapPin,
   Layers,
   Info,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Database,
+  Users,
+  Crown
 } from 'lucide-react';
 import { Booking } from '@/types/booking';
 import { GalleryItem, GalleryCategory } from '@/types/gallery';
 import { HeroSlide, MAX_HERO_SLIDES } from '@/types/heroSlide';
 import { TourPackage } from '@/types/package';
-import { isClientAuthenticated, clearClientSession } from '@/lib/adminAuth';
+import { isClientAuthenticated, clearClientSession, getClientUser } from '@/lib/adminAuth';
 import MediaInput from '@/components/admin/MediaInput';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   // Mobile sidebar drawer state
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -141,6 +145,8 @@ export default function AdminDashboardPage() {
     setIsAuthenticated(auth);
     if (!auth) {
       router.push('/admin/login');
+    } else {
+      setCurrentUser(getClientUser());
     }
   }, [router]);
 
@@ -921,6 +927,22 @@ export default function AdminDashboardPage() {
 
           </div>
 
+          {/* Shortcut to Superuser Portal (Hanya tampil jika login sebagai Superuser) */}
+          {currentUser?.role === 'SUPERUSER' && (
+            <div className="pt-3 px-1">
+              <Link
+                href="/superuser"
+                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 font-space text-xs font-bold shadow-md shadow-amber-500/10 transition-all border border-amber-500/30"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Crown className="w-4 h-4 text-amber-400" />
+                  <span>Buka Portal Superuser</span>
+                </div>
+                <ArrowUpRight className="w-3.5 h-3.5 text-amber-400" />
+              </Link>
+            </div>
+          )}
+
           <div className="pt-4 px-3 py-1.5 text-[11px] font-space font-bold uppercase tracking-wider text-slate-400">
             Akses Publik
           </div>
@@ -943,23 +965,27 @@ export default function AdminDashboardPage() {
         {/* Bottom: Profile & Logout */}
         <div className="p-4 border-t border-slate-100 bg-slate-50/70 space-y-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center font-outfit font-black text-amber-800 text-sm">
-                AD
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className={`w-9 h-9 rounded-xl border flex items-center justify-center font-outfit font-black text-sm shrink-0 ${
+                currentUser?.role === 'SUPERUSER'
+                  ? 'bg-amber-100 border-amber-300 text-amber-900'
+                  : 'bg-slate-100 border-slate-300 text-slate-700'
+              }`}>
+                {(currentUser?.username || 'AD').slice(0, 2).toUpperCase()}
               </div>
-              <div className="leading-tight">
-                <span className="font-outfit font-bold text-xs text-slate-900 block">
-                  Admin Basecamp
+              <div className="leading-tight truncate">
+                <span className="font-outfit font-bold text-xs text-slate-900 block truncate">
+                  {currentUser?.name || currentUser?.username || 'Admin Basecamp'}
                 </span>
-                <span className="text-[10px] font-space text-slate-500 block">
-                  Super Admin • Aktif
+                <span className="text-[10px] font-space text-slate-500 block truncate">
+                  {currentUser?.role === 'SUPERUSER' ? '👑 Superuser Master' : '🛡️ Staf Admin'} • Aktif
                 </span>
               </div>
             </div>
 
             <button
               onClick={handleLogout}
-              className="p-2 rounded-xl text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
+              className="p-2 rounded-xl text-red-500 hover:bg-red-50 transition-colors cursor-pointer shrink-0"
               title="Keluar dari Admin"
             >
               <LogOut className="w-4 h-4" />

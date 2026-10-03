@@ -40,7 +40,11 @@ export default function AdminLoginPage() {
 
       if (data.success && data.user) {
         setClientSession(data.user);
-        router.push('/admin');
+        if (data.user.role === 'SUPERUSER') {
+          router.push('/superuser');
+        } else {
+          router.push('/admin');
+        }
       } else {
         setError(data.error || 'Username atau password tidak sesuai.');
       }
@@ -141,15 +145,15 @@ export default function AdminLoginPage() {
               </div>
             </div>
 
-            {/* Auto-fill demo button */}
+            {/* Auto-fill admin button */}
             <div className="pt-1 flex items-center justify-between">
               <button
                 type="button"
                 onClick={handleDemoFill}
                 className="inline-flex items-center gap-1.5 text-[11px] font-space font-bold text-amber-700 hover:text-amber-800 transition-colors cursor-pointer"
               >
-                <KeyRound className="w-3.5 h-3.5" />
-                <span>Auto-fill Akun Demo</span>
+                <KeyRound className="w-3.5 h-3.5 text-amber-600" />
+                <span>Auto-fill Akun Admin</span>
               </button>
               <div className="flex items-center gap-1 text-[11px] text-slate-400">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
@@ -169,6 +173,20 @@ export default function AdminLoginPage() {
               </button>
             </div>
           </form>
+
+          {/* Direct link to Superuser Portal */}
+          <div className="mt-5 pt-4 border-t border-slate-100 text-center">
+            <span className="text-[11px] font-work text-slate-500">
+              Pengelola Sistem / Pimpinan?{' '}
+            </span>
+            <Link
+              href="/superuser/login"
+              className="text-[11px] font-space font-bold text-amber-700 hover:text-amber-800 transition-colors inline-flex items-center gap-1"
+            >
+              <span>👑 Buka Portal Superuser Khusus</span>
+              <span>→</span>
+            </Link>
+          </div>
 
         </div>
 

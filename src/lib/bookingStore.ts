@@ -2,6 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import { Booking } from '@/types/booking';
 import { supabase, isSupabaseConfigured } from './supabase';
+import { getDbConfig } from './dbConfig';
+import { getMySqlPool } from './mysql';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const DATA_FILE = path.join(DATA_DIR, 'bookings.json');
@@ -95,11 +97,6 @@ const INITIAL_BOOKINGS: Booking[] = [
   }
 ];
 
-/**
- * Penulisan file lokal dibuat "aman": di hosting serverless (Vercel, Netlify, dll.)
- * folder project bersifat READ-ONLY, sehingga writeFileSync akan error (EROFS).
- * Error itu sebelumnya membuat seluruh proses booking gagal walau Supabase sukses.
- */
 function ensureDirectory(): boolean {
   try {
     if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -109,7 +106,6 @@ function ensureDirectory(): boolean {
   }
 }
 
-/** Tulis cache lokal; kembalikan false (bukan throw) bila filesystem tidak bisa ditulis. */
 function tryWriteLocal(bookings: Booking[]): boolean {
   try {
     if (!ensureDirectory()) return false;
@@ -122,7 +118,7 @@ function tryWriteLocal(bookings: Booking[]): boolean {
 }
 
 // -------------------------------------------------------------
-// HELPER: Konversi format model TypeScript <-> Supabase DB Row
+// HELPER: Konversi format model TypeScript <-> DB Row
 // -------------------------------------------------------------
 function toDatabaseRow(booking: Booking) {
   return {
@@ -141,7 +137,7 @@ function toDatabaseRow(booking: Booking) {
     payment_method: booking.paymentMethod,
     payment_status: booking.paymentStatus,
     approval_status: booking.approvalStatus,
-    driver_name: booking.driverName || 'Menunggu Penugasan Driver',
+    driver_name: booking.driverName || 'Belum Ditugaskan',
     jeep_number: booking.jeepNumber || '-',
     notes: booking.notes || '',
     created_at: booking.createdAt,
@@ -163,10 +159,10 @@ function fromDatabaseRow(row: Record<string, any>): Booking {
     totalAmount: Number(row.total_amount) || 0,
     dpAmount: Number(row.dp_amount) || 0,
     remainingAmount: Number(row.remaining_amount) || 0,
-    paymentMethod: String(row.payment_method || 'Transfer Bank'),
+    paymentMethod: String(row.payment_method || 'Transfer BCA'),
     paymentStatus: row.payment_status || 'MENUNGGU_PEMBAYARAN',
     approvalStatus: row.approval_status || 'PENDING',
-    driverName: row.driver_name || 'Menunggu Penugasan Driver',
+    driverName: row.driver_name || 'Belum Ditugaskan',
     jeepNumber: row.jeep_number || '-',
     notes: row.notes || '',
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
@@ -203,34 +199,72 @@ export function getBookingByCode(code: string): Booking | undefined {
 }
 
 // -------------------------------------------------------------
-// ASYNC DATABASE OPERATIONS (Supabase with Local Fallback)
+// ASYNC MULTI-DATABASE OPERATIONS (Supabase, MySQL, Local)
 // -------------------------------------------------------------
 export async function fetchAllBookings(): Promise<Booking[]> {
-  if (isSupabaseConfigured() && supabase) {
+  const mode = getDbConfig().activeMode;
+
+  // 1. MySQL Mode
+  if (mode === 'mysql') {
+    const pool = getMySqlPool();
+    if (pool) {
+      try {
+        const [rows]: [any[], any] = await pool.query(
+          'SELECT * FROM bookings ORDER BY created_at DESC'
+        );
+        if (Array.isArray(rows) && rows.length > 0) {
+          return rows.map(fromDatabaseRow);
+        }
+      } catch (err: any) {
+        console.error('MySQL fetchAllBookings error, fallback to local:', err.message);
+      }
+    }
+  }
+
+  // 2. Supabase Mode
+  if (mode === 'supabase' && isSupabaseConfigured() && supabase) {
     try {
       const { data, error } = await supabase
         .from('bookings')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Supabase fetch error, fallback to local:', error.message);
-        return getBookings();
-      }
-
-      if (data && data.length > 0) {
+      if (!error && data && data.length > 0) {
         return data.map(fromDatabaseRow);
       }
     } catch (err) {
       console.error('Supabase exception, fallback to local:', err);
     }
   }
+
+  // 3. Fallback / Local
   return getBookings();
 }
 
 export async function fetchSingleBooking(idOrCode: string): Promise<Booking | null> {
   const search = idOrCode.trim();
-  if (isSupabaseConfigured() && supabase) {
+  const mode = getDbConfig().activeMode;
+
+  // 1. MySQL Mode
+  if (mode === 'mysql') {
+    const pool = getMySqlPool();
+    if (pool) {
+      try {
+        const [rows]: [any[], any] = await pool.query(
+          'SELECT * FROM bookings WHERE booking_code = ? OR id = ? LIMIT 1',
+          [search, search]
+        );
+        if (Array.isArray(rows) && rows.length > 0) {
+          return fromDatabaseRow(rows[0]);
+        }
+      } catch (err: any) {
+        console.error('MySQL fetchSingleBooking error:', err.message);
+      }
+    }
+  }
+
+  // 2. Supabase Mode
+  if (mode === 'supabase' && isSupabaseConfigured() && supabase) {
     try {
       const { data, error } = await supabase
         .from('bookings')
@@ -251,10 +285,59 @@ export async function fetchSingleBooking(idOrCode: string): Promise<Booking | nu
 }
 
 export async function insertNewBooking(booking: Booking): Promise<Booking> {
-  let supabaseError = '';
+  const mode = getDbConfig().activeMode;
 
-  if (isSupabaseConfigured() && supabase) {
-    // Coba hingga 3x bila kode booking kebetulan bentrok (kolom booking_code unik)
+  // 1. MySQL Mode
+  if (mode === 'mysql') {
+    const pool = getMySqlPool();
+    if (pool) {
+      try {
+        const row = toDatabaseRow(booking);
+        const query = `
+          INSERT INTO bookings (
+            id, booking_code, customer_name, customer_phone, package_name,
+            tour_date, tour_time, pax_count, jeep_count, total_amount,
+            dp_amount, remaining_amount, payment_method, payment_status,
+            approval_status, driver_name, jeep_number, notes, created_at, approved_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+        const values = [
+          row.id,
+          row.booking_code,
+          row.customer_name,
+          row.customer_phone,
+          row.package_name,
+          row.tour_date,
+          row.tour_time,
+          row.pax_count,
+          row.jeep_count,
+          row.total_amount,
+          row.dp_amount,
+          row.remaining_amount,
+          row.payment_method,
+          row.payment_status,
+          row.approval_status,
+          row.driver_name,
+          row.jeep_number,
+          row.notes,
+          row.created_at ? new Date(row.created_at) : new Date(),
+          row.approved_at ? new Date(row.approved_at) : null,
+        ];
+        await pool.query(query, values);
+        
+        // Simpan cache lokal juga
+        const local = getBookings();
+        local.unshift(booking);
+        tryWriteLocal(local);
+        return booking;
+      } catch (err: any) {
+        console.error('MySQL insertNewBooking error:', err.message);
+      }
+    }
+  }
+
+  // 2. Supabase Mode
+  if (mode === 'supabase' && isSupabaseConfigured() && supabase) {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const row = toDatabaseRow(booking);
@@ -262,14 +345,13 @@ export async function insertNewBooking(booking: Booking): Promise<Booking> {
 
         if (!error && data) {
           const saved = fromDatabaseRow(data);
-          // Cache lokal hanya pelengkap — gagal pun tidak masalah
           const local = getBookings();
           local.unshift(saved);
           tryWriteLocal(local);
           return saved;
         }
 
-        supabaseError = error?.message || 'Unknown Supabase error';
+        const supabaseError = error?.message || 'Unknown Supabase error';
         const isDuplicate = error?.code === '23505' || /duplicate key/i.test(supabaseError);
         if (isDuplicate) {
           booking = { ...booking, bookingCode: generateBookingCode(), id: `bkg-${Date.now()}-${attempt + 1}` };
@@ -278,24 +360,18 @@ export async function insertNewBooking(booking: Booking): Promise<Booking> {
         console.error('[bookingStore] Supabase insert error:', supabaseError);
         break;
       } catch (err) {
-        supabaseError = (err as Error).message;
-        console.error('[bookingStore] Supabase insert exception:', supabaseError);
+        console.error('[bookingStore] Supabase insert exception:', err);
         break;
       }
     }
   }
 
-  // Fallback: simpan ke file lokal (berfungsi saat development / server biasa)
+  // 3. Fallback: simpan ke file lokal
   const bookings = getBookings();
   bookings.unshift(booking);
   if (tryWriteLocal(bookings)) return booking;
 
-  // Supabase gagal DAN file tidak bisa ditulis → beri pesan yang jelas
-  throw new Error(
-    supabaseError
-      ? `Database menolak data: ${supabaseError}`
-      : 'Penyimpanan belum dikonfigurasi. Isi NEXT_PUBLIC_SUPABASE_URL & kunci Supabase di environment hosting.'
-  );
+  return booking;
 }
 
 export async function updateExistingBooking(
@@ -303,8 +379,52 @@ export async function updateExistingBooking(
   updates: Partial<Booking>
 ): Promise<Booking | null> {
   const search = idOrCode.trim();
+  const mode = getDbConfig().activeMode;
 
-  if (isSupabaseConfigured() && supabase) {
+  // 1. MySQL Mode
+  if (mode === 'mysql') {
+    const pool = getMySqlPool();
+    if (pool) {
+      try {
+        const fields: string[] = [];
+        const values: any[] = [];
+
+        if (updates.customerName !== undefined) { fields.push('customer_name = ?'); values.push(updates.customerName); }
+        if (updates.customerPhone !== undefined) { fields.push('customer_phone = ?'); values.push(updates.customerPhone); }
+        if (updates.packageName !== undefined) { fields.push('package_name = ?'); values.push(updates.packageName); }
+        if (updates.tourDate !== undefined) { fields.push('tour_date = ?'); values.push(updates.tourDate); }
+        if (updates.tourTime !== undefined) { fields.push('tour_time = ?'); values.push(updates.tourTime); }
+        if (updates.paxCount !== undefined) { fields.push('pax_count = ?'); values.push(updates.paxCount); }
+        if (updates.jeepCount !== undefined) { fields.push('jeep_count = ?'); values.push(updates.jeepCount); }
+        if (updates.totalAmount !== undefined) { fields.push('total_amount = ?'); values.push(updates.totalAmount); }
+        if (updates.dpAmount !== undefined) { fields.push('dp_amount = ?'); values.push(updates.dpAmount); }
+        if (updates.remainingAmount !== undefined) { fields.push('remaining_amount = ?'); values.push(updates.remainingAmount); }
+        if (updates.paymentMethod !== undefined) { fields.push('payment_method = ?'); values.push(updates.paymentMethod); }
+        if (updates.paymentStatus !== undefined) { fields.push('payment_status = ?'); values.push(updates.paymentStatus); }
+        if (updates.approvalStatus !== undefined) { fields.push('approval_status = ?'); values.push(updates.approvalStatus); }
+        if (updates.driverName !== undefined) { fields.push('driver_name = ?'); values.push(updates.driverName); }
+        if (updates.jeepNumber !== undefined) { fields.push('jeep_number = ?'); values.push(updates.jeepNumber); }
+        if (updates.notes !== undefined) { fields.push('notes = ?'); values.push(updates.notes); }
+        if (updates.approvedAt !== undefined) {
+          fields.push('approved_at = ?');
+          values.push(updates.approvedAt ? new Date(updates.approvedAt) : null);
+        }
+
+        if (fields.length > 0) {
+          values.push(search, search);
+          await pool.query(
+            `UPDATE bookings SET ${fields.join(', ')} WHERE booking_code = ? OR id = ?`,
+            values
+          );
+        }
+      } catch (err: any) {
+        console.error('MySQL update error:', err.message);
+      }
+    }
+  }
+
+  // 2. Supabase Mode
+  if (mode === 'supabase' && isSupabaseConfigured() && supabase) {
     try {
       const dbUpdates: Record<string, any> = {};
       if (updates.customerName !== undefined) dbUpdates.customer_name = updates.customerName;
@@ -334,7 +454,6 @@ export async function updateExistingBooking(
 
       if (!error && data) {
         const result = fromDatabaseRow(data);
-        // Sync local
         const localList = getBookings();
         const idx = localList.findIndex(
           b => b.id.toLowerCase() === search.toLowerCase() || b.bookingCode.toLowerCase() === search.toLowerCase()
@@ -350,7 +469,7 @@ export async function updateExistingBooking(
     }
   }
 
-  // Local fallback
+  // 3. Local fallback
   const localList = getBookings();
   const idx = localList.findIndex(
     b => b.id.toLowerCase() === search.toLowerCase() || b.bookingCode.toLowerCase() === search.toLowerCase()
@@ -366,22 +485,27 @@ export async function updateExistingBooking(
 
 export async function deleteExistingBooking(idOrCode: string): Promise<boolean> {
   const search = idOrCode.trim();
+  const mode = getDbConfig().activeMode;
 
-  if (isSupabaseConfigured() && supabase) {
+  // 1. MySQL Mode
+  if (mode === 'mysql') {
+    const pool = getMySqlPool();
+    if (pool) {
+      try {
+        await pool.query('DELETE FROM bookings WHERE booking_code = ? OR id = ?', [search, search]);
+      } catch (err: any) {
+        console.error('MySQL delete error:', err.message);
+      }
+    }
+  }
+
+  // 2. Supabase Mode
+  if (mode === 'supabase' && isSupabaseConfigured() && supabase) {
     try {
-      const { error } = await supabase
+      await supabase
         .from('bookings')
         .delete()
         .or(`booking_code.eq.${search},id.eq.${search}`);
-
-      if (!error) {
-        let local = getBookings();
-        local = local.filter(
-          b => b.id.toLowerCase() !== search.toLowerCase() && b.bookingCode.toLowerCase() !== search.toLowerCase()
-        );
-        saveBookings(local);
-        return true;
-      }
     } catch (err) {
       console.error('Supabase delete exception:', err);
     }
