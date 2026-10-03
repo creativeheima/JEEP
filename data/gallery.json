@@ -1,1 +1,58 @@
-[]
+[
+  {
+    "id": "gal-1791011417112",
+    "type": "PHOTO",
+    "title": "Bersama Kekasih",
+    "category": "JEEP ACTION",
+    "mediaUrl": "https://buwvlltddacvtewulvwg.supabase.co/storage/v1/object/public/media/gallery/1791011409988-qh0jy-keluarga-di-teras-pandang-pegunungan.webp",
+    "createdAt": "2026-10-03T07:10:17.112Z"
+  },
+  {
+    "id": "gal-1791011404737",
+    "type": "PHOTO",
+    "title": "Gunung Sumbing",
+    "category": "JEEP ACTION",
+    "mediaUrl": "https://buwvlltddacvtewulvwg.supabase.co/storage/v1/object/public/media/gallery/1791011397175-sldv2-desa-bertingkat-di-bawah-gunung-megah.webp",
+    "createdAt": "2026-10-03T07:10:04.737Z"
+  },
+  {
+    "id": "gal-1791011341111",
+    "type": "PHOTO",
+    "title": "Pemandangan Yang Indah Sekali",
+    "category": "JEEP ACTION",
+    "mediaUrl": "https://buwvlltddacvtewulvwg.supabase.co/storage/v1/object/public/media/gallery/1791011331288-xp5w8-jip-oranye-di-desa-pegunungan-merapi.webp",
+    "createdAt": "2026-10-03T07:09:01.111Z"
+  },
+  {
+    "id": "gal-1791011326014",
+    "type": "PHOTO",
+    "title": "BErsama Saudara",
+    "category": "JEEP ACTION",
+    "mediaUrl": "https://buwvlltddacvtewulvwg.supabase.co/storage/v1/object/public/media/gallery/1791011320569-shpb8-keceriaan-di-atas-jeep-hijau.webp",
+    "createdAt": "2026-10-03T07:08:46.014Z"
+  },
+  {
+    "id": "gal-1791011315546",
+    "type": "PHOTO",
+    "title": "Bersama Keluarga",
+    "category": "JEEP ACTION",
+    "mediaUrl": "https://buwvlltddacvtewulvwg.supabase.co/storage/v1/object/public/media/gallery/1791011310972-o0zm1-konvoi-jeep-off-road-di-pedesaan.webp",
+    "createdAt": "2026-10-03T07:08:35.546Z"
+  },
+  {
+    "id": "gal-1791011305596",
+    "type": "PHOTO",
+    "title": "Pemandangan Indah",
+    "category": "JEEP ACTION",
+    "mediaUrl": "https://buwvlltddacvtewulvwg.supabase.co/storage/v1/object/public/media/gallery/1791011300861-uap2v-konvoi-off-road-di-perkebunan-teh-berkab.webp",
+    "createdAt": "2026-10-03T07:08:25.596Z"
+  },
+  {
+    "id": "gal-1791011295957",
+    "type": "PHOTO",
+    "title": "Advanture",
+    "category": "JEEP ACTION",
+    "mediaUrl": "https://buwvlltddacvtewulvwg.supabase.co/storage/v1/object/public/media/gallery/1791011281004-8qj9v-konvoi-jeep-ceria-di-bawah-gunung.webp",
+    "createdAt": "2026-10-03T07:08:15.957Z"
+  }
+]

@@ -54,9 +54,14 @@ const INITIAL_HERO_SLIDES: HeroSlide[] = [
   },
 ];
 
-function ensureDirectory() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+function ensureDirectory(): boolean {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -89,31 +94,32 @@ function fromDatabaseRow(row: Record<string, any>): HeroSlide {
 }
 
 export function getLocalHeroSlides(): HeroSlide[] {
-  ensureDirectory();
-  if (!fs.existsSync(DATA_FILE)) {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(INITIAL_HERO_SLIDES, null, 2), 'utf8');
-    return INITIAL_HERO_SLIDES;
-  }
   try {
-    const raw = fs.readFileSync(DATA_FILE, 'utf8');
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      // Normalize showText default to true if undefined
-      return parsed.map(slide => ({
-        ...slide,
-        showText: slide.showText !== false,
-        showButton: slide.showButton !== false,
-      }));
+    if (fs.existsSync(DATA_FILE)) {
+      const raw = fs.readFileSync(DATA_FILE, 'utf8');
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // Normalize showText default to true if undefined
+        return parsed.map(slide => ({
+          ...slide,
+          showText: slide.showText !== false,
+          showButton: slide.showButton !== false,
+        }));
+      }
     }
-    return INITIAL_HERO_SLIDES;
-  } catch {
-    return INITIAL_HERO_SLIDES;
-  }
+  } catch {}
+  return INITIAL_HERO_SLIDES;
 }
 
-export function saveLocalHeroSlides(slides: HeroSlide[]) {
-  ensureDirectory();
-  fs.writeFileSync(DATA_FILE, JSON.stringify(slides.slice(0, MAX_HERO_SLIDES), null, 2), 'utf8');
+export function saveLocalHeroSlides(slides: HeroSlide[]): boolean {
+  try {
+    if (!ensureDirectory()) return false;
+    fs.writeFileSync(DATA_FILE, JSON.stringify(slides.slice(0, MAX_HERO_SLIDES), null, 2), 'utf8');
+    return true;
+  } catch (err) {
+    console.warn('[heroSlideStore] Tidak bisa menulis cache lokal (normal di Vercel):', (err as Error).message);
+    return false;
+  }
 }
 
 export async function fetchAllHeroSlides(): Promise<HeroSlide[]> {

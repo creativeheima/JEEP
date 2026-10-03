@@ -1,4 +1,4 @@
-﻿import fs from 'fs';
+import fs from 'fs';
 import path from 'path';
 
 export interface CollageContent {
@@ -31,8 +31,14 @@ export function getCollageContent(): CollageContent {
   return DEFAULT_CONTENT;
 }
 
-export function saveCollageContent(content: CollageContent): void {
-  const dir = path.dirname(DATA_FILE);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(DATA_FILE, JSON.stringify(content, null, 2), 'utf-8');
+export function saveCollageContent(content: CollageContent): boolean {
+  try {
+    const dir = path.dirname(DATA_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(DATA_FILE, JSON.stringify(content, null, 2), 'utf-8');
+    return true;
+  } catch (err) {
+    console.warn('[collageStore] Tidak bisa menulis data/collage.json (normal di Vercel):', (err as Error).message);
+    return false;
+  }
 }

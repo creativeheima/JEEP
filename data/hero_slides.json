@@ -10,16 +10,18 @@
   },
   {
     "id": "slide-2",
-    "imageUrl": "/images/img_1_53_jeep_cruising_through_volcanic_off-road_track_mount_merapi.png",
+    "imageUrl": "https://buwvlltddacvtewulvwg.supabase.co/storage/v1/object/public/media/hero/1791011516894-b2iis-konvoi-off-road-di-perkebunan-teh-berkab.webp",
     "title": "Ekspedisi Jalur Vulkanik & Lava Track",
     "showText": true,
     "showButton": true,
     "order": 2,
-    "createdAt": "2026-10-01T00:08:13.119Z"
+    "createdAt": "2026-10-01T00:08:13.119Z",
+    "headline": "",
+    "subheadline": ""
   },
   {
     "id": "slide-3",
-    "imageUrl": "/images/img_1_193_paket_medium_kali_kuning_splashing_water.png",
+    "imageUrl": "https://buwvlltddacvtewulvwg.supabase.co/storage/v1/object/public/media/hero/1791011207955-44lb6-volcanic-river-crossing-at-golden-hour.webp",
     "title": "Sensasi Manuver Basah Kali Kuning",
     "showText": true,
     "showButton": true,
@@ -39,11 +41,13 @@
   },
   {
     "id": "slide-5",
-    "imageUrl": "/images/img_1_443_travelers_smiling_in_4x4_jeep_with_mount_merapi_in_the_background.png",
+    "imageUrl": "https://buwvlltddacvtewulvwg.supabase.co/storage/v1/object/public/media/hero/1791011483748-ol2ji-jip-oranye-di-desa-pegunungan-merapi.webp",
     "title": "Momen Bahagia Wisatawan & Keluarga",
     "showText": true,
     "showButton": true,
     "order": 5,
-    "createdAt": "2026-10-01T00:08:43.119Z"
+    "createdAt": "2026-10-01T00:08:43.119Z",
+    "headline": "",
+    "subheadline": ""
   }
 ]

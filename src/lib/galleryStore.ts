@@ -79,9 +79,14 @@ const INITIAL_GALLERY: GalleryItem[] = [
   },
 ];
 
-function ensureDirectory() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+function ensureDirectory(): boolean {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -114,22 +119,25 @@ function fromDatabaseRow(row: Record<string, any>): GalleryItem {
 }
 
 export function getLocalGallery(): GalleryItem[] {
-  ensureDirectory();
-  if (!fs.existsSync(DATA_FILE)) {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(INITIAL_GALLERY, null, 2), 'utf8');
-    return INITIAL_GALLERY;
-  }
   try {
-    const raw = fs.readFileSync(DATA_FILE, 'utf8');
-    return JSON.parse(raw);
-  } catch {
-    return INITIAL_GALLERY;
-  }
+    if (fs.existsSync(DATA_FILE)) {
+      const raw = fs.readFileSync(DATA_FILE, 'utf8');
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return INITIAL_GALLERY;
 }
 
-export function saveLocalGallery(items: GalleryItem[]) {
-  ensureDirectory();
-  fs.writeFileSync(DATA_FILE, JSON.stringify(items, null, 2), 'utf8');
+export function saveLocalGallery(items: GalleryItem[]): boolean {
+  try {
+    if (!ensureDirectory()) return false;
+    fs.writeFileSync(DATA_FILE, JSON.stringify(items, null, 2), 'utf8');
+    return true;
+  } catch (err) {
+    console.warn('[galleryStore] Tidak bisa menulis cache lokal (normal di Vercel):', (err as Error).message);
+    return false;
+  }
 }
 
 export async function fetchAllGalleryItems(): Promise<GalleryItem[]> {

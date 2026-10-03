@@ -93,10 +93,16 @@ function readPackages(): TourPackage[] {
   return DEFAULT_PACKAGES;
 }
 
-function writePackages(packages: TourPackage[]): void {
-  const dir = path.dirname(DATA_FILE);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(DATA_FILE, JSON.stringify(packages, null, 2), 'utf-8');
+function writePackages(packages: TourPackage[]): boolean {
+  try {
+    const dir = path.dirname(DATA_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(DATA_FILE, JSON.stringify(packages, null, 2), 'utf-8');
+    return true;
+  } catch (err) {
+    console.warn('[packageStore] Tidak bisa menulis data/packages.json (normal di Vercel):', (err as Error).message);
+    return false;
+  }
 }
 
 export function getAllPackages(): TourPackage[] {
