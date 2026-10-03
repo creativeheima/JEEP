@@ -2,16 +2,58 @@ import fs from 'fs';
 import path from 'path';
 import { SystemDatabaseConfig, DatabaseMode } from '@/types/database';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-const CONFIG_FILE = path.join(DATA_DIR, 'db_config.json');
+/**
+ * Strategi penyimpanan berlapis agar kompatibel di semua environment:
+ *
+ * 1. VERCEL / Production (read-only filesystem):
+ *    - Tulis ke /tmp/db_config.json (writable di semua serverless platform)
+ *    - /tmp tidak persisten antar cold-start, tetapi config di-cache di memory
+ *      selama instance serverless hidup.
+ *
+ * 2. Local Dev (Next.js dev server):
+ *    - Tulis ke <project>/data/db_config.json (persisten & mudah diedit manual)
+ *
+ * Priority baca: memory cache → /tmp (Vercel) | data/ (local) → env vars → default
+ */
+
+const IS_VERCEL =
+  process.env.VERCEL === '1' ||
+  process.env.VERCEL_ENV !== undefined ||
+  process.env.AWS_LAMBDA_FUNCTION_NAME !== undefined;
+
+const LOCAL_DATA_DIR = path.join(process.cwd(), 'data');
+const LOCAL_CONFIG_FILE = path.join(LOCAL_DATA_DIR, 'db_config.json');
+const TMP_CONFIG_FILE = '/tmp/db_config.json';
+
+function getConfigFilePath(): string {
+  return IS_VERCEL ? TMP_CONFIG_FILE : LOCAL_CONFIG_FILE;
+}
+
+function ensureDirExists(filePath: string) {
+  const dir = path.dirname(filePath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+}
+
+function getSupabaseFromEnv() {
+  return {
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '',
+    anonKey:
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      process.env.SUPABASE_ANON_KEY ||
+      process.env.SUPABASE_KEY ||
+      '',
+    serviceRoleKey:
+      process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.SUPABASE_SERVICE_KEY ||
+      '',
+  };
+}
 
 const DEFAULT_CONFIG: SystemDatabaseConfig = {
   activeMode: 'supabase',
-  supabase: {
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '',
-    anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '',
-    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || '',
-  },
+  supabase: getSupabaseFromEnv(),
   mysql: {
     host: process.env.MYSQL_HOST || 'localhost',
     port: Number(process.env.MYSQL_PORT) || 3306,
@@ -30,57 +72,86 @@ export function resetDbConfigCache() {
   cachedConfig = null;
 }
 
-function ensureDirExists() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+function parseConfigFile(raw: string): SystemDatabaseConfig | null {
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+
+    // Gunakan ?? (nullish) agar nilai kosong ("") yang sengaja disimpan tidak tertimpa env-var
+    const envSb = getSupabaseFromEnv();
+    const sbUrl = parsed.supabase?.url ?? envSb.url;
+    const sbAnon = parsed.supabase?.anonKey ?? envSb.anonKey;
+    const sbSvc = parsed.supabase?.serviceRoleKey ?? envSb.serviceRoleKey;
+
+    return {
+      activeMode: (parsed.activeMode as DatabaseMode) ?? 'supabase',
+      supabase: {
+        url: typeof sbUrl === 'string' ? sbUrl : '',
+        anonKey: typeof sbAnon === 'string' ? sbAnon : '',
+        serviceRoleKey: typeof sbSvc === 'string' ? sbSvc : '',
+      },
+      mysql: {
+        host: parsed.mysql?.host ?? DEFAULT_CONFIG.mysql.host,
+        port: Number(parsed.mysql?.port) || DEFAULT_CONFIG.mysql.port,
+        database: parsed.mysql?.database ?? DEFAULT_CONFIG.mysql.database,
+        user: parsed.mysql?.user ?? DEFAULT_CONFIG.mysql.user,
+        password: parsed.mysql?.password ?? '',
+        ssl: Boolean(parsed.mysql?.ssl),
+      },
+      updatedAt: parsed.updatedAt ?? new Date().toISOString(),
+      updatedBy: parsed.updatedBy ?? 'system',
+    };
+  } catch {
+    return null;
   }
 }
 
+function readConfigFromFile(): SystemDatabaseConfig | null {
+  const filePath = getConfigFilePath();
+  try {
+    if (fs.existsSync(filePath)) {
+      const raw = fs.readFileSync(filePath, 'utf-8');
+      const parsed = parseConfigFile(raw);
+      if (parsed) return parsed;
+    }
+  } catch (err) {
+    console.warn('[dbConfig] Gagal baca', filePath, ':', err);
+  }
+
+  // Di local: juga coba /tmp jika data/ gagal (edge case)
+  if (!IS_VERCEL && filePath !== TMP_CONFIG_FILE) {
+    try {
+      if (fs.existsSync(TMP_CONFIG_FILE)) {
+        const raw = fs.readFileSync(TMP_CONFIG_FILE, 'utf-8');
+        const parsed = parseConfigFile(raw);
+        if (parsed) return parsed;
+      }
+    } catch {}
+  }
+
+  return null;
+}
+
 export function getDbConfig(): SystemDatabaseConfig {
-  if (cachedConfig) {
+  // 1. Memory cache
+  if (cachedConfig) return cachedConfig;
+
+  // 2. Baca dari file (env-aware)
+  const fromFile = readConfigFromFile();
+  if (fromFile) {
+    cachedConfig = fromFile;
     return cachedConfig;
   }
 
+  // 3. Fallback ke DEFAULT (env-var)
+  cachedConfig = { ...DEFAULT_CONFIG, supabase: { ...getSupabaseFromEnv() } };
   try {
-    if (fs.existsSync(CONFIG_FILE)) {
-      const raw = fs.readFileSync(CONFIG_FILE, 'utf-8');
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object') {
-        // Gunakan ?? (nullish) agar nilai kosong ("") tidak tertimpa env-var
-        const sbUrl = parsed.supabase?.url ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
-        const sbAnon = parsed.supabase?.anonKey ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
-        const sbSvc = parsed.supabase?.serviceRoleKey ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
-        cachedConfig = {
-          activeMode: parsed.activeMode ?? 'supabase',
-          supabase: {
-            url: typeof sbUrl === 'string' ? sbUrl : '',
-            anonKey: typeof sbAnon === 'string' ? sbAnon : '',
-            serviceRoleKey: typeof sbSvc === 'string' ? sbSvc : '',
-          },
-          mysql: {
-            host: parsed.mysql?.host ?? 'localhost',
-            port: Number(parsed.mysql?.port) || 3306,
-            database: parsed.mysql?.database ?? 'merapi_jeep_adventure',
-            user: parsed.mysql?.user ?? 'root',
-            password: parsed.mysql?.password ?? '',
-            ssl: Boolean(parsed.mysql?.ssl),
-          },
-          updatedAt: parsed.updatedAt ?? new Date().toISOString(),
-          updatedBy: parsed.updatedBy ?? 'system',
-        };
-        return cachedConfig;
-      }
-    }
-  } catch (err) {
-    console.error('Error reading db_config.json:', err);
+    const filePath = getConfigFilePath();
+    ensureDirExists(filePath);
+    fs.writeFileSync(filePath, JSON.stringify(cachedConfig, null, 2), 'utf-8');
+  } catch {
+    // Di read-only env, ini normal — in-memory cache sudah cukup
   }
-
-  // Fallback to default & save
-  cachedConfig = { ...DEFAULT_CONFIG };
-  try {
-    ensureDirExists();
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(cachedConfig, null, 2), 'utf-8');
-  } catch {}
 
   return cachedConfig;
 }
@@ -90,39 +161,50 @@ export function saveDbConfig(
   updatedBy: string = 'superuser'
 ): boolean {
   try {
-    ensureDirExists();
     const current = getDbConfig();
     const merged: SystemDatabaseConfig = {
-      activeMode: (newConfig.activeMode as DatabaseMode) || current.activeMode,
+      activeMode: (newConfig.activeMode as DatabaseMode) ?? current.activeMode,
       supabase: {
         ...current.supabase,
-        ...(newConfig.supabase || {}),
+        ...(newConfig.supabase ?? {}),
       },
       mysql: {
         ...current.mysql,
-        ...(newConfig.mysql || {}),
+        ...(newConfig.mysql ?? {}),
       },
       updatedAt: new Date().toISOString(),
       updatedBy,
     };
 
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(merged, null, 2), 'utf-8');
+    // PENTING: Selalu update in-memory cache TERLEBIH DAHULU
+    // Ini memastikan config aktif bahkan jika file write gagal (e.g., Vercel read-only issue)
     cachedConfig = merged;
-    return true;
+
+    // Kemudian tulis ke file (best-effort)
+    try {
+      const filePath = getConfigFilePath();
+      ensureDirExists(filePath);
+      fs.writeFileSync(filePath, JSON.stringify(merged, null, 2), 'utf-8');
+      console.log(`[dbConfig] Config disimpan ke ${filePath} (mode: ${merged.activeMode})`);
+    } catch (fsErr: any) {
+      console.warn('[dbConfig] File write gagal (config tetap aktif via memory cache):', fsErr?.message);
+    }
+
+    return true; // Selalu sukses karena in-memory cache sudah diupdate
   } catch (err: any) {
-    console.error('Error saving db_config.json:', err?.message || err);
+    console.error('[dbConfig] Error kritis saveDbConfig:', err?.message || err);
     return false;
   }
 }
 
-/** Tampilkan config aman (password / secret key disensor sebagian atau utuh) */
+/** Tampilkan config aman (password / secret key disensor sebagian) */
 export function getMaskedDbConfig(): SystemDatabaseConfig {
   const cfg = getDbConfig();
   return {
     ...cfg,
     supabase: {
       url: cfg.supabase.url,
-      anonKey: cfg.supabase.anonKey, // Diperlukan di admin untuk edit / verifikasi
+      anonKey: cfg.supabase.anonKey,
       serviceRoleKey: cfg.supabase.serviceRoleKey
         ? cfg.supabase.serviceRoleKey.length > 12
           ? `${cfg.supabase.serviceRoleKey.slice(0, 6)}...${cfg.supabase.serviceRoleKey.slice(-4)}`
@@ -135,3 +217,5 @@ export function getMaskedDbConfig(): SystemDatabaseConfig {
     },
   };
 }
+
+
