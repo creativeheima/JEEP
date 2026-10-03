@@ -132,7 +132,8 @@ export async function POST(request: Request) {
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.writeFileSync(dest, buffer);
       return NextResponse.json({ success: true, url: `/uploads/${filePath}`, storage: 'local' }, { status: 201 });
-    } catch {
+    } catch (localErr) {
+      console.error('[upload] local storage fallback error:', localErr);
       throw new Error(
         'Server tidak bisa menyimpan file. Hubungkan Supabase (isi env SUPABASE) atau gunakan opsi Link Google Drive.'
       );
