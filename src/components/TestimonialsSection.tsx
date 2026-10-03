@@ -1,7 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Star, CheckCircle2 } from 'lucide-react';
+import { Star, CheckCircle2, Quote } from 'lucide-react';
+import { Reveal } from '@/components/motion';
+import SectionHeading, { Accent } from '@/components/SectionHeading';
 
 export default function TestimonialsSection() {
   const testimonials = [
@@ -29,31 +31,27 @@ export default function TestimonialsSection() {
   ];
 
   return (
-    <section className="py-20 lg:py-28 bg-[#fbfbfe] border-t border-slate-200/60 overflow-hidden section-edge">
-      <div className="section-line" aria-hidden="true" />
+    <section id="ulasan" className="flow-section py-14 sm:py-20 lg:py-24 overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="font-space font-bold text-xs text-amber-600 tracking-widest uppercase mb-2">
-            ULASAN JUJUR
-          </div>
-          <h2 className="font-outfit font-black text-3xl sm:text-4xl text-slate-950 tracking-tight mb-3">
-            Pengalaman Mereka yang Telah Menguji Nyali
-          </h2>
-          <p className="font-work text-slate-600 text-sm sm:text-base leading-relaxed">
-            Ratusan keluarga, pecinta alam, dan rombongan kantor telah merasakan ketagihan serunya tur Jeep kami.
-          </p>
-        </div>
+        <SectionHeading
+          chapter="08"
+          eyebrow="Ulasan jujur"
+          align="center"
+          title={<>Mereka yang Sudah <Accent>Menguji Nyali</Accent></>}
+          description="Ratusan keluarga, pecinta alam, dan rombongan kantor telah merasakan ketagihan serunya tur Jeep kami."
+        />
 
         {/* Testimonials 3 Columns Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {testimonials.map((item, idx) => (
+            <Reveal key={idx} variant="up" delay={idx * 140} className="h-full">
             <div
-              key={idx}
-              className="bg-white rounded-2xl p-7 border border-slate-200 shadow-sm hover:shadow-lg transition-all flex flex-col justify-between"
+              className="card-lift h-full relative overflow-hidden glass-card rounded-[28px] p-7 flex flex-col justify-between group"
             >
-              <div className="space-y-4">
+              <Quote className="absolute -top-2 -right-2 w-24 h-24 text-amber-200/50 rotate-12 transition-transform duration-700 group-hover:rotate-0 group-hover:scale-110" aria-hidden="true" />
+              <div className="relative space-y-4">
                 {/* 5 Stars */}
                 <div className="flex items-center gap-1">
                   {[...Array(item.rating)].map((_, i) => (
@@ -69,7 +67,7 @@ export default function TestimonialsSection() {
               </div>
 
               {/* Author Row */}
-              <div className="flex items-center gap-3.5 pt-6 mt-6 border-t border-slate-100">
+              <div className="relative flex items-center gap-3.5 pt-6 mt-6 border-t border-slate-200/70">
                 <div className="w-11 h-11 rounded-full bg-amber-100 text-amber-800 font-outfit font-bold text-sm flex items-center justify-center border border-amber-200 shrink-0">
                   {item.initials}
                 </div>
@@ -85,6 +83,7 @@ export default function TestimonialsSection() {
               </div>
 
             </div>
+            </Reveal>
           ))}
         </div>
 

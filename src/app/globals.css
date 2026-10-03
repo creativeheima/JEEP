@@ -1,15 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Space+Grotesk:wght@400;500;600;700&family=Work+Sans:wght@400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-:root {
-  --font-outfit: 'Outfit', sans-serif;
-  --font-space: 'Space Grotesk', monospace;
-  --font-work: 'Work Sans', sans-serif;
-  --font-jakarta: 'Plus Jakarta Sans', sans-serif;
-}
 
 html {
   scroll-behavior: smooth;
@@ -17,7 +8,7 @@ html {
 
 body {
   color: #020617;
-  background-color: #ffffff;
+  background-color: #faf8f4;
   font-family: var(--font-jakarta), sans-serif;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
@@ -54,42 +45,308 @@ body {
   box-shadow: 0 10px 25px -5px rgba(217, 119, 6, 0.4);
 }
 
-/* Section transition: soft top shade + amber hairline with diamond marker */
-.section-edge {
+/* =========================================================
+   MOTION SYSTEM — reveal on scroll, parallax helpers, keyframes
+   ========================================================= */
+
+/* --- Reveal saat elemen masuk layar --- */
+.reveal {
+  opacity: 0;
+  transition:
+    opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 1s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+.reveal-up    { transform: translate3d(0, 48px, 0); }
+.reveal-down  { transform: translate3d(0, -32px, 0); }
+.reveal-left  { transform: translate3d(-56px, 0, 0); }
+.reveal-right { transform: translate3d(56px, 0, 0); }
+.reveal-zoom  { transform: scale(0.9); }
+.reveal-blur  { transform: translate3d(0, 24px, 0); filter: blur(14px); }
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+/* --- Headline hero: kata muncul satu per satu --- */
+.word-mask {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+  padding-bottom: 0.12em;
+  margin-bottom: -0.12em;
+}
+.word-rise {
+  display: inline-block;
+  transform: translate3d(0, 110%, 0) rotate(4deg);
+  opacity: 0;
+  animation: word-rise 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: var(--word-delay, 0ms);
+}
+@keyframes word-rise {
+  to { transform: translate3d(0, 0, 0) rotate(0); opacity: 1; }
+}
+
+.fade-rise {
+  opacity: 0;
+  animation: fade-rise 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: var(--fade-delay, 0ms);
+}
+@keyframes fade-rise {
+  from { opacity: 0; transform: translate3d(0, 24px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* --- Ken Burns untuk slide hero aktif --- */
+.kenburns {
+  animation: kenburns 9s ease-out forwards;
+}
+@keyframes kenburns {
+  from { transform: scale(1.12) translate3d(0, 0, 0); }
+  to   { transform: scale(1) translate3d(0, 0, 0); }
+}
+
+/* --- Gradien teks yang bergerak --- */
+.animate-gradient {
+  background-size: 220% auto;
+  animation: gradient-pan 6s ease-in-out infinite alternate;
+}
+@keyframes gradient-pan {
+  from { background-position: 0% 50%; }
+  to   { background-position: 100% 50%; }
+}
+
+/* --- Elemen melayang pelan --- */
+.float-slow   { animation: float-y 7s ease-in-out infinite; }
+.float-medium { animation: float-y 5s ease-in-out infinite; }
+@keyframes float-y {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(0, -14px, 0); }
+}
+
+/* --- Parallax mengikuti kursor (pakai CSS var --mx / --my dari Hero) --- */
+.mouse-layer {
+  transform: translate3d(
+    calc(var(--mx, 0) * var(--depth, 20) * 1px),
+    calc(var(--my, 0) * var(--depth, 20) * 1px),
+    0
+  );
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* --- Marquee --- */
+.marquee-track {
+  animation: marquee 38s linear infinite;
+}
+.marquee-mask:hover .marquee-track { animation-play-state: paused; }
+@keyframes marquee {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+.marquee-mask {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+          mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+}
+
+/* --- Kartu: angkat + kilau saat hover --- */
+.card-lift {
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.5s ease, border-color 0.3s ease;
+}
+.card-lift:hover {
+  transform: translate3d(0, -8px, 0);
+  box-shadow: 0 30px 60px -20px rgba(15, 23, 42, 0.28);
+}
+.card-shine {
   position: relative;
+  isolation: isolate;
 }
-.section-edge::before {
+.card-shine::after {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 96px;
-  background: linear-gradient(to bottom, rgba(148, 163, 184, 0.14), rgba(148, 163, 184, 0));
+  inset: 0;
+  z-index: 15;
   pointer-events: none;
-  z-index: 1;
+  background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.28) 50%, transparent 65%);
+  transform: translateX(-120%);
+  transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.section-edge::after {
+.card-shine:hover::after { transform: translateX(120%); }
+
+/* --- Hormati pengaturan "kurangi gerakan" di perangkat --- */
+@media (prefers-reduced-motion: reduce) {
+  .reveal, .word-rise, .fade-rise {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    transition: none !important;
+    animation: none !important;
+  }
+  .kenburns, .animate-gradient, .float-slow, .float-medium, .marquee-track {
+    animation: none !important;
+  }
+  .mouse-layer { transform: none !important; }
+}
+
+
+/* =========================================================
+   CONTINUOUS CANVAS 2026 — latar menyatu untuk semua section
+   ========================================================= */
+
+/* Kanvas tetap di belakang halaman: aurora hangat yang pelan bergerak */
+.page-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background:
+    radial-gradient(60% 50% at 0% 0%, rgba(251, 191, 36, 0.10), transparent 60%),
+    radial-gradient(50% 45% at 100% 100%, rgba(234, 88, 12, 0.08), transparent 60%),
+    #faf8f4;
+}
+.page-canvas .aurora {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  opacity: 0.55;
+  will-change: transform;
+}
+.page-canvas .aurora-a {
+  width: 44vw; height: 44vw; left: -10vw; top: 10vh;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.45), transparent 65%);
+  animation: aurora-drift-a 26s ease-in-out infinite alternate;
+}
+.page-canvas .aurora-b {
+  width: 38vw; height: 38vw; right: -8vw; top: 40vh;
+  background: radial-gradient(circle, rgba(251, 146, 60, 0.35), transparent 65%);
+  animation: aurora-drift-b 32s ease-in-out infinite alternate;
+}
+.page-canvas .aurora-c {
+  width: 34vw; height: 34vw; left: 30vw; bottom: -14vw;
+  background: radial-gradient(circle, rgba(148, 163, 184, 0.30), transparent 65%);
+  animation: aurora-drift-a 38s ease-in-out infinite alternate-reverse;
+}
+@keyframes aurora-drift-a {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to   { transform: translate3d(8vw, 6vh, 0) scale(1.15); }
+}
+@keyframes aurora-drift-b {
+  from { transform: translate3d(0, 0, 0) scale(1.1); }
+  to   { transform: translate3d(-6vw, -8vh, 0) scale(0.95); }
+}
+
+/* Butiran halus (grain) — tekstur khas desain 2026 */
+.grain {
+  position: fixed;
+  inset: -50%;
+  z-index: 70;
+  pointer-events: none;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: grain-shift 1.2s steps(4) infinite;
+}
+@keyframes grain-shift {
+  0%   { transform: translate(0, 0); }
+  25%  { transform: translate(-3%, 2%); }
+  50%  { transform: translate(2%, -3%); }
+  75%  { transform: translate(-2%, -1%); }
+  100% { transform: translate(0, 0); }
+}
+
+/* Section transparan yang menyatu dengan kanvas */
+.flow-section {
+  position: relative;
+  background: transparent;
+  scroll-margin-top: 88px;
+}
+
+/* Gambar watermark memudar di atas & bawah, jadi tidak ada garis potong antar section */
+.fade-mask-y {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 78%, transparent 100%);
+          mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 78%, transparent 100%);
+}
+
+/* Konektor garis putus-putus di antara section (seperti jejak rute) */
+.route-connector {
+  position: relative;
+  height: 96px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.route-connector::before {
+  content: '';
+  width: 2px;
+  height: 100%;
+  background-image: linear-gradient(to bottom, rgba(217, 119, 6, 0.55) 50%, transparent 50%);
+  background-size: 2px 12px;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 70%, transparent);
+          mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 70%, transparent);
+  animation: route-flow 1.4s linear infinite;
+}
+.route-connector::after {
   content: '';
   position: absolute;
-  top: 7px;
+  top: 50%;
   left: 50%;
   width: 10px;
   height: 10px;
-  transform: translateX(-50%) rotate(45deg);
+  border-radius: 9999px;
+  transform: translate(-50%, -50%);
   background: #f59e0b;
-  border: 2px solid #ffffff;
-  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.35);
-  pointer-events: none;
-  z-index: 30;
+  box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.15), 0 0 24px rgba(245, 158, 11, 0.6);
 }
-.section-edge > .section-line {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(to right, transparent, rgba(245, 158, 11, 0.55) 30%, rgba(245, 158, 11, 0.55) 70%, transparent);
-  pointer-events: none;
-  z-index: 29;
+@keyframes route-flow {
+  from { background-position: 0 0; }
+  to   { background-position: 0 12px; }
+}
+
+/* Panel kaca untuk kartu */
+.glass-card {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 20px 50px -24px rgba(15, 23, 42, 0.18);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-canvas .aurora, .grain, .route-connector::before { animation: none !important; }
+}
+
+/* Sembunyikan scrollbar untuk baris geser horizontal (tab, slider) */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* =========================================================
+   GALLERY FEED ala TikTok
+   ========================================================= */
+.feed-zoom { animation: feed-zoom 6s ease-out forwards; }
+@keyframes feed-zoom {
+  from { transform: scale(1.06); }
+  to   { transform: scale(1); }
+}
+.heart-burst { animation: heart-burst 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+@keyframes heart-burst {
+  0%   { transform: scale(0.2) rotate(-15deg); opacity: 0; }
+  20%  { transform: scale(1.25) rotate(-8deg); opacity: 1; }
+  45%  { transform: scale(0.95) rotate(-8deg); opacity: 1; }
+  100% { transform: scale(1.1) translateY(-90px) rotate(-8deg); opacity: 0; }
+}
+.heart-pop { animation: heart-pop 0.45s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes heart-pop {
+  0% { transform: scale(0.6); }
+  50% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+.swipe-hint { animation: swipe-hint 1.6s ease-in-out infinite; }
+@keyframes swipe-hint {
+  0%, 100% { transform: translateY(0); opacity: 0.9; }
+  50%      { transform: translateY(-12px); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .feed-zoom, .heart-burst, .heart-pop, .swipe-hint { animation: none !important; }
 }

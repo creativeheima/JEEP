@@ -1,0 +1,33 @@
+import { TourPackage } from '@/types/package';
+
+// Static fallback (also used by BookingModal as initial list)
+export const defaultPackagesData: TourPackage[] = [
+  {
+    id: 'short', badge: 'RUTE DASAR', subBadge: 'EKSPEDISI CEPAT',
+    title: 'Paket Short', price: 'Rp 400.000', duration: '1.5 - 2 Jam',
+    image: '/images/img_1_156_paket_short_merapi_jeep.png',
+    destinations: ['Museum Sisa Hartaku (Erupsi 2010)', 'Batu Alien (Batu Wajah Merapi)', 'Bunker Kaliadem & Pemandangan Kawah', 'Spot Foto Estetik Lereng Merapi'],
+    isFeatured: false, color: 'slate', order: 1,
+  },
+  {
+    id: 'medium', badge: 'BEST SELLER', subBadge: 'PALING DICARI WISATAWAN',
+    title: 'Paket Medium', price: 'Rp 500.000', duration: '2 - 2.5 Jam',
+    image: '/images/img_1_193_paket_medium_kali_kuning_splashing_water.png',
+    destinations: ['Atraksi Basah Air Kali Kuning (Water Splash)', 'Museum Sisa Hartaku', 'Batu Alien (Batu Wajah Merapi)', 'Bunker Kaliadem & Puncak Merapi', 'Jalur Pasir Lava Bawah Lereng'],
+    isFeatured: true, featureText: 'PALING FAVORIT & REKOMENDASI', color: 'amber', order: 2,
+  },
+  {
+    id: 'long', badge: 'FULL ADVENTURE', subBadge: 'EKSPLORASI LENGKAP',
+    title: 'Paket Long', price: 'Rp 600.000', duration: '3 - 3.5 Jam',
+    image: '/images/img_1_243_paket_long_petilasan_mbah_maridjan.png',
+    destinations: ['Petilasan Mbah Maridjan (Kinahrejo)', 'Manuver Off-Road Air Kali Kuning', 'Museum Sisa Hartaku', 'Batu Alien & Lembah Gendol', 'Bunker Kaliadem'],
+    isFeatured: false, color: 'slate', order: 3,
+  },
+  {
+    id: 'sunrise', badge: 'START 04:30', subBadge: 'MAGICAL DAWN',
+    title: 'Paket Sunrise', price: 'Rp 550.000', duration: '2.5 - 3 Jam',
+    image: '/images/img_1_280_paket_sunrise_merapi.png',
+    destinations: ['Golden Sunrise Kaliadem View Point', 'Sensasi Udara Dingin Fajar Gunung Merapi', 'Bunker Kaliadem Eksklusif Pagi', 'Batu Alien & Museum Sisa Hartaku'],
+    isFeatured: false, color: 'orange', order: 4,
+  },
+];

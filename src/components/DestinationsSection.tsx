@@ -3,6 +3,8 @@
 import React, { useState, useRef } from 'react';
 import Image from 'next/image';
 import { ArrowUpRight, ChevronLeft, ChevronRight, Compass, MapPin, Sparkles, Waves, Shield, Flame } from 'lucide-react';
+import { Reveal, Parallax, ParallaxImage } from '@/components/motion';
+import SectionHeading, { Accent } from '@/components/SectionHeading';
 
 interface DestinationsSectionProps {
   onSelectDestination?: (name: string) => void;
@@ -81,60 +83,52 @@ export default function DestinationsSection({ onSelectDestination }: Destination
   };
 
   return (
-    <section id="destinasi" className="relative py-14 sm:py-20 lg:py-28 bg-[#fbfbfe] overflow-hidden border-t border-slate-200/60 section-edge scroll-mt-20 lg:scroll-mt-24">
-      <div className="section-line" aria-hidden="true" />
+    <section id="destinasi" className="flow-section py-14 sm:py-20 lg:py-24 overflow-hidden">
       
       {/* Mountain watermark background */}
-      <div className="absolute inset-0 pointer-events-none opacity-20">
+      <Parallax speed={0.3} className="absolute inset-0 pointer-events-none opacity-[0.18] overflow-hidden fade-mask-y" innerClassName="absolute inset-x-0 -top-[20%] -bottom-[20%]">
         <Image
           src="/images/img_1_357_mountain_peak_watermark.png"
-          alt="Mountain Peak Watermark"
+          alt="" aria-hidden="true"
           fill
           className="object-cover object-top mix-blend-multiply"
         />
-      </div>
+      </Parallax>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 sm:mb-12">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-200 font-space font-bold text-[11px] tracking-wider uppercase mb-2.5">
-              <Compass className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
-              <span>SPOT IKONIK JALUR MERAPI</span>
+        <SectionHeading
+          chapter="04"
+          eyebrow="Spot ikonik jalur Merapi"
+          title={<>Destinasi yang <Accent>Melegenda</Accent></>}
+          description="Spot ikonik yang dikunjungi rute lava tour Merapi — dari Bunker Kaliadem hingga Kali Kuning, saksikan keagungan alam dan jejak sejarah erupsi Merapi."
+          className="!mb-8 sm:!mb-12"
+          aside={
+            <div className="hidden sm:flex items-center gap-3">
+              <button
+                onClick={handlePrev}
+                className="glass-card w-11 h-11 rounded-full flex items-center justify-center text-slate-700 hover:text-amber-600 transition-colors active:scale-95 cursor-pointer"
+                title="Sebelumnya"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="font-space font-bold text-xs text-slate-400 tabular-nums">
+                <strong className="text-slate-900">{String(activeIdx + 1).padStart(2, '0')}</strong> / {String(destinations.length).padStart(2, '0')}
+              </span>
+              <button
+                onClick={handleNext}
+                className="glass-card w-11 h-11 rounded-full flex items-center justify-center text-slate-700 hover:text-amber-600 transition-colors active:scale-95 cursor-pointer"
+                title="Berikutnya"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
-            <h2 className="font-outfit font-black text-2xl sm:text-4xl lg:text-5xl text-slate-950 tracking-tight leading-tight">
-              Destinasi Petualangan Legendaris
-            </h2>
-            <p className="font-work text-slate-600 text-xs sm:text-base leading-relaxed mt-2">
-              Setiap sudut lereng menyimpan cerita ketangguhan bumi Jawa. Saksikan keagungan alam dan jejak sejarah dahsyatnya erupsi Merapi.
-            </p>
-          </div>
-
-          {/* Desktop Navigation / Counter */}
-          <div className="hidden sm:flex items-center gap-3 self-end">
-            <button
-              onClick={handlePrev}
-              className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 transition-colors shadow-xs active:scale-95 cursor-pointer"
-              title="Sebelumnya"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <span className="font-mono font-bold text-xs text-slate-400">
-              <strong className="text-slate-900">{activeIdx + 1}</strong> / {destinations.length}
-            </span>
-            <button
-              onClick={handleNext}
-              className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 transition-colors shadow-xs active:scale-95 cursor-pointer"
-              title="Berikutnya"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
+          }
+        />
 
         {/* MOBILE VIEW: Horizontal Snap Slider with Peek & Controls (Phone only) */}
-        <div className="block md:hidden">
+        <Reveal variant="right" className="block md:hidden">
           {/* Snap Container */}
           <div
             ref={scrollRef}
@@ -153,7 +147,7 @@ export default function DestinationsSection({ onSelectDestination }: Destination
               return (
                 <div
                   key={dest.id}
-                  className="snap-center shrink-0 w-[84vw] max-w-[340px] relative h-[420px] rounded-2xl overflow-hidden shadow-lg border border-slate-200/80 flex flex-col justify-between p-4.5 transition-all duration-300 active:scale-[0.99]"
+                  className="snap-center shrink-0 w-[84vw] max-w-[340px] relative h-[420px] rounded-[28px] overflow-hidden shadow-lg border border-white/60 flex flex-col justify-between p-4.5 transition-all duration-300 active:scale-[0.99]"
                 >
                   {/* Background Image with Zoom */}
                   <Image
@@ -240,23 +234,24 @@ export default function DestinationsSection({ onSelectDestination }: Destination
               <span className="text-amber-600 font-bold">→</span>
             </span>
           </div>
-        </div>
+        </Reveal>
 
         {/* DESKTOP / TABLET VIEW: 2x2 Grid (Unchanged on large screens) */}
         <div className="hidden md:grid md:grid-cols-2 gap-6">
-          {destinations.map((dest) => {
+          {destinations.map((dest, i) => {
             const IconComponent = dest.icon;
             return (
+              <Reveal key={dest.id} variant={i % 2 === 0 ? 'left' : 'right'} delay={(i % 2) * 120}>
               <div
-                key={dest.id}
-                className="relative h-[380px] lg:h-[420px] rounded-3xl overflow-hidden shadow-lg border border-slate-200 group flex flex-col justify-between p-6 lg:p-8 transition-all hover:shadow-2xl"
+                className="card-lift card-shine relative h-[380px] lg:h-[460px] rounded-[32px] overflow-hidden shadow-lg border border-slate-200 group flex flex-col justify-between p-6 lg:p-8"
               >
-                {/* Background Image */}
-                <Image
+                {/* Background Image (parallax di dalam bingkai) */}
+                <ParallaxImage
                   src={dest.image}
                   alt={dest.title}
-                  fill
-                  className="object-cover object-center group-hover:scale-105 transition-transform duration-700"
+                  speed={0.14}
+                  sizes="(max-width: 1024px) 50vw, 640px"
+                  className="object-cover object-center group-hover:scale-110 transition-transform duration-[1400ms] ease-out"
                 />
 
                 {/* Gradient Overlays */}
@@ -276,7 +271,7 @@ export default function DestinationsSection({ onSelectDestination }: Destination
                 </div>
 
                 {/* Bottom Content */}
-                <div className="relative z-10 text-white space-y-2.5">
+                <div className="relative z-10 text-white space-y-2.5 transition-transform duration-500 group-hover:-translate-y-1.5">
                   <div className="inline-block bg-amber-500/95 backdrop-blur-xs text-slate-950 font-space font-extrabold text-[10px] tracking-widest px-2.5 py-1 rounded uppercase">
                     {dest.tag}
                   </div>
@@ -312,6 +307,7 @@ export default function DestinationsSection({ onSelectDestination }: Destination
                   </div>
                 </div>
               </div>
+              </Reveal>
             );
           })}
         </div>

@@ -36,7 +36,7 @@ export default function Navbar({ onOpenBooking, onOpenCheckTicket }: NavbarProps
       }
     };
 
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -51,8 +51,10 @@ export default function Navbar({ onOpenBooking, onOpenCheckTicket }: NavbarProps
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 bg-white border-b border-slate-200/80 ${
-        isScrolled ? 'shadow-md py-3' : 'py-3.5 sm:py-4'
+      className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-500 border-b ${
+        isScrolled
+          ? 'bg-white/75 backdrop-blur-xl backdrop-saturate-150 border-slate-200/60 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.18)] py-3'
+          : 'bg-white border-slate-200/80 py-3.5 sm:py-4'
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
@@ -61,7 +63,7 @@ export default function Navbar({ onOpenBooking, onOpenCheckTicket }: NavbarProps
           <div className="relative h-10 sm:h-12 w-auto transition-transform duration-300 group-hover:scale-105">
             <Image
               src="/images/logo.png"
-              alt="Merapi Jeep 4x4 Adventure Tour"
+              alt="Merapi Jeep Adventure — lava tour jeep Merapi Jogja"
               width={2171}
               height={724}
               priority

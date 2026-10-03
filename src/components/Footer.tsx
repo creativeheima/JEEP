@@ -3,203 +3,123 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import {
-  MapPin,
-  Phone,
-  Mail,
-  ShieldCheck,
-  Lock,
-  Instagram,
-  Facebook,
-  Youtube,
-  Award,
-} from 'lucide-react';
+import { Instagram, Facebook, Youtube, ArrowUpRight, ArrowUp } from 'lucide-react';
+
+const NAV = [
+  { label: 'Tentang', href: '#tentang' },
+  { label: 'Paket', href: '#paket-wisata' },
+  { label: 'Destinasi', href: '#destinasi' },
+  { label: 'Galeri', href: '#galeri' },
+  { label: 'Kontak', href: '#kontak' },
+];
+
+const SOCIALS = [
+  { label: 'Instagram', href: 'https://instagram.com', icon: Instagram },
+  { label: 'Facebook', href: 'https://facebook.com', icon: Facebook },
+  { label: 'YouTube', href: 'https://youtube.com', icon: Youtube },
+];
 
 export default function Footer() {
+  const year = new Date().getFullYear();
+
   return (
-    <footer className="bg-[#0a0f1d] text-slate-300 pt-16 pb-12 border-t border-slate-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Main 4 Columns */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-8 pb-14 border-b border-slate-800">
-          
-          {/* Column 1: Brand Info */}
-          <div className="lg:col-span-4 space-y-5">
-            <Link href="#hero" className="inline-block group py-1">
-              <div className="relative h-12 w-auto transition-transform duration-300 group-hover:scale-105">
-                <Image
-                  src="/images/logo.png"
-                  alt="Merapi Jeep 4x4 Adventure Tour"
-                  width={2171}
-                  height={724}
-                  className="h-12 w-auto object-contain"
-                />
-              </div>
+    <footer className="relative z-10 bg-[#0a0f1d] text-slate-400 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-10">
+        {/* Baris utama: brand — navigasi — kontak */}
+        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-10 pb-10 sm:pb-14">
+          {/* Brand */}
+          <div className="max-w-xs">
+            <Link href="#hero" className="inline-block">
+              <Image
+                src="/images/logo.png"
+                alt="Merapi Jeep Adventure — lava tour jeep Merapi Jogja"
+                width={2171}
+                height={724}
+                className="h-10 sm:h-11 w-auto object-contain"
+              />
             </Link>
-
-            <p className="font-work text-xs text-slate-400 leading-relaxed max-w-sm">
-              Penyedia tur eksplorasi ekstrem Merapi 4x4 terpercaya di Yogyakarta. Menghadirkan sensasi off-road autentik menyusuri sisa erupsi, bunker Kaliadem, dan lava track dengan standar keselamatan internasional.
+            <p className="font-jakarta text-sm leading-relaxed mt-4 text-slate-400">
+              Petualangan Jeep 4x4 di lereng Merapi — aman, autentik, tak terlupakan.
             </p>
-
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-amber-500/40 text-[11px] font-space font-semibold text-amber-400">
-              <Award className="w-4 h-4 text-amber-400" />
-              <span>OFFICIAL EXPEDITION LICENSE</span>
-            </div>
           </div>
 
-          {/* Column 2: Popular Packages */}
-          <div className="lg:col-span-3 space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-4 bg-amber-500 rounded-sm" />
-              <h4 className="font-outfit font-bold text-sm text-white tracking-wider uppercase">
-                PAKET POPULER
-              </h4>
-            </div>
-            <ul className="space-y-2.5 font-work text-xs text-slate-400">
-              <li>
-                <a href="#paket-wisata" className="hover:text-amber-400 transition-colors">
-                  Sunrise Kaliadem Track (Short)
-                </a>
-              </li>
-              <li>
-                <a href="#paket-wisata" className="hover:text-amber-400 transition-colors">
-                  Alien Rock & Museum (Medium)
-                </a>
-              </li>
-              <li>
-                <a href="#paket-wisata" className="hover:text-amber-400 transition-colors">
-                  Extreme Caldera Trail (Long)
-                </a>
-              </li>
-              <li>
-                <a href="#paket-wisata" className="hover:text-amber-400 transition-colors">
-                  Yellow River Water Crossing
-                </a>
-              </li>
-              <li>
-                <a href="#paket-wisata" className="hover:text-amber-400 transition-colors">
-                  Custom Corporate Outing
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          {/* Column 3: Quick Navigation */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-4 bg-amber-500 rounded-sm" />
-              <h4 className="font-outfit font-bold text-sm text-white tracking-wider uppercase">
-                NAVIGASI CEPAT
-              </h4>
-            </div>
-            <ul className="space-y-2.5 font-work text-xs text-slate-400">
-              <li>
-                <a href="#hero" className="hover:text-amber-400 transition-colors">
-                  Beranda Ekspedisi
-                </a>
-              </li>
-              <li>
-                <a href="#tentang" className="hover:text-amber-400 transition-colors">
-                  Profil Armada & Basecamp
-                </a>
-              </li>
-              <li>
-                <a href="#paket-wisata" className="hover:text-amber-400 transition-colors">
-                  Pilihan Jalur Rute Off-Road
-                </a>
-              </li>
-              <li>
-                <a href="#destinasi" className="hover:text-amber-400 transition-colors">
-                  Bunker Kaliadem & Batu Alien
-                </a>
-              </li>
-              <li>
-                <Link href="/admin" className="text-amber-400 font-bold hover:text-amber-300 transition-colors">
-                  → Portal Admin Basecamp (Input Deal WA)
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Column 4: Basecamp & Contact */}
-          <div className="lg:col-span-3 space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-4 bg-amber-500 rounded-sm" />
-              <h4 className="font-outfit font-bold text-sm text-white tracking-wider uppercase">
-                BASECAMP & KONTAK
-              </h4>
-            </div>
-            
-            <div className="space-y-3 font-work text-xs text-slate-400">
-              <div className="flex items-start gap-2.5">
-                <MapPin className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                <span className="leading-relaxed">
-                  Basecamp Kaliurang Barat, Hargobinangun, Pakem, Sleman, D.I. Yogyakarta 55582
-                </span>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <Phone className="w-4 h-4 text-amber-500 shrink-0" />
-                <a href="tel:+6281234567890" className="hover:text-amber-400">
-                  +62 812-3456-7890
-                </a>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <Mail className="w-4 h-4 text-amber-500 shrink-0" />
-                <a href="mailto:booking@merapijeepadventure.com" className="hover:text-amber-400">
-                  booking@merapijeepadventure.com
-                </a>
-              </div>
-            </div>
-
-            {/* Social Links */}
-            <div className="flex items-center gap-2.5 pt-2">
+          {/* Navigasi */}
+          <nav className="flex flex-wrap gap-x-7 gap-y-3" aria-label="Navigasi footer">
+            {NAV.map((n) => (
               <a
-                href="https://instagram.com"
-                target="_blank"
-                rel="noreferrer"
-                className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-amber-500 hover:text-slate-950 text-slate-400 flex items-center justify-center transition-all border border-slate-800"
+                key={n.href}
+                href={n.href}
+                className="font-space text-xs font-semibold tracking-[0.14em] uppercase text-slate-300 hover:text-amber-400 transition-colors"
               >
-                <Instagram className="w-4 h-4" />
+                {n.label}
               </a>
-              <a
-                href="https://facebook.com"
-                target="_blank"
-                rel="noreferrer"
-                className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-amber-500 hover:text-slate-950 text-slate-400 flex items-center justify-center transition-all border border-slate-800"
-              >
-                <Facebook className="w-4 h-4" />
-              </a>
-              <a
-                href="https://youtube.com"
-                target="_blank"
-                rel="noreferrer"
-                className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-amber-500 hover:text-slate-950 text-slate-400 flex items-center justify-center transition-all border border-slate-800"
-              >
-                <Youtube className="w-4 h-4" />
-              </a>
-            </div>
-          </div>
+            ))}
+          </nav>
 
+          {/* Kontak */}
+          <div className="space-y-2 lg:text-right">
+            <a
+              href="https://wa.me/6281234567890"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group inline-flex items-center gap-1.5 font-outfit font-bold text-xl sm:text-2xl text-white hover:text-amber-400 transition-colors"
+            >
+              +62 812-3456-7890
+              <ArrowUpRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            </a>
+            <a
+              href="mailto:booking@merapijeepadventure.com"
+              className="block font-jakarta text-sm hover:text-amber-400 transition-colors"
+            >
+              booking@merapijeepadventure.com
+            </a>
+            <p className="font-jakarta text-sm text-slate-500">Kaliurang, Sleman — Yogyakarta</p>
+          </div>
         </div>
 
-        {/* Bottom Bar */}
-        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-work text-slate-500">
-          <p className="text-center sm:text-left">
-            © 2025. Powered by Merapi Jeep Adventure Tour. Design by Heima Creative.
+        {/* Garis tipis */}
+        <div className="h-px bg-gradient-to-r from-transparent via-slate-700/70 to-transparent" />
+
+        {/* Baris bawah */}
+        <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-5 py-6 sm:py-7">
+          <p className="font-jakarta text-xs text-slate-500 text-center sm:text-left">
+            © {year} Merapi Jeep Adventure
+            <span className="mx-2 text-slate-700">·</span>
+            <Link href="/admin" className="hover:text-slate-300 transition-colors">
+              Admin
+            </Link>
           </p>
 
-          <div className="flex items-center gap-6 text-slate-400 font-space text-[11px]">
-            <div className="flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Garansi Asuransi Jiwa Jasa Raharja</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Lock className="w-3.5 h-3.5 text-amber-400" />
-              <span>Booking Instan Aman</span>
-            </div>
+          <div className="flex items-center gap-2">
+            {SOCIALS.map(({ label, href, icon: Icon }) => (
+              <a
+                key={label}
+                href={href}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={label}
+                className="w-9 h-9 rounded-full border border-slate-700/80 text-slate-400 hover:text-slate-950 hover:bg-amber-400 hover:border-amber-400 flex items-center justify-center transition-all"
+              >
+                <Icon className="w-4 h-4" />
+              </a>
+            ))}
+            <a
+              href="#hero"
+              aria-label="Kembali ke atas"
+              className="ml-2 w-9 h-9 rounded-full bg-white/5 text-slate-300 hover:bg-white hover:text-slate-950 flex items-center justify-center transition-all"
+            >
+              <ArrowUp className="w-4 h-4" />
+            </a>
           </div>
         </div>
+      </div>
 
+      {/* Wordmark besar samar sebagai penutup */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none select-none text-center font-outfit font-black uppercase leading-[0.8] tracking-[-0.05em] text-[19vw] lg:text-[15rem] -mb-[3vw] lg:-mb-10 bg-gradient-to-b from-white/[0.07] to-white/0 bg-clip-text text-transparent"
+      >
+        Merapi
       </div>
     </footer>
   );

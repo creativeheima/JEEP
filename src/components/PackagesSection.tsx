@@ -1,51 +1,27 @@
-﻿'use client';
+'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { Users, Clock, Check, Sparkles, Compass } from 'lucide-react';
 import { TourPackage } from '@/types/package';
+import { defaultPackagesData } from '@/lib/defaultPackages';
+import { Reveal, Parallax } from '@/components/motion';
+import SectionHeading, { Accent } from '@/components/SectionHeading';
 
 interface PackagesSectionProps {
   onSelectPackage?: (pkgName: string, price: string) => void;
 }
 
-// Static fallback (also used by BookingModal as initial list)
-export const defaultPackagesData: TourPackage[] = [
-  {
-    id: 'short', badge: 'RUTE DASAR', subBadge: 'EKSPEDISI CEPAT',
-    title: 'Paket Short', price: 'Rp 400.000', duration: '1.5 - 2 Jam',
-    image: '/images/img_1_156_paket_short_merapi_jeep.png',
-    destinations: ['Museum Sisa Hartaku (Erupsi 2010)', 'Batu Alien (Batu Wajah Merapi)', 'Bunker Kaliadem & Pemandangan Kawah', 'Spot Foto Estetik Lereng Merapi'],
-    isFeatured: false, color: 'slate', order: 1,
-  },
-  {
-    id: 'medium', badge: 'BEST SELLER', subBadge: 'PALING DICARI WISATAWAN',
-    title: 'Paket Medium', price: 'Rp 500.000', duration: '2 - 2.5 Jam',
-    image: '/images/img_1_193_paket_medium_kali_kuning_splashing_water.png',
-    destinations: ['Atraksi Basah Air Kali Kuning (Water Splash)', 'Museum Sisa Hartaku', 'Batu Alien (Batu Wajah Merapi)', 'Bunker Kaliadem & Puncak Merapi', 'Jalur Pasir Lava Bawah Lereng'],
-    isFeatured: true, featureText: 'PALING FAVORIT & REKOMENDASI', color: 'amber', order: 2,
-  },
-  {
-    id: 'long', badge: 'FULL ADVENTURE', subBadge: 'EKSPLORASI LENGKAP',
-    title: 'Paket Long', price: 'Rp 600.000', duration: '3 - 3.5 Jam',
-    image: '/images/img_1_243_paket_long_petilasan_mbah_maridjan.png',
-    destinations: ['Petilasan Mbah Maridjan (Kinahrejo)', 'Manuver Off-Road Air Kali Kuning', 'Museum Sisa Hartaku', 'Batu Alien & Lembah Gendol', 'Bunker Kaliadem'],
-    isFeatured: false, color: 'slate', order: 3,
-  },
-  {
-    id: 'sunrise', badge: 'START 04:30', subBadge: 'MAGICAL DAWN',
-    title: 'Paket Sunrise', price: 'Rp 550.000', duration: '2.5 - 3 Jam',
-    image: '/images/img_1_280_paket_sunrise_merapi.png',
-    destinations: ['Golden Sunrise Kaliadem View Point', 'Sensasi Udara Dingin Fajar Gunung Merapi', 'Bunker Kaliadem Eksklusif Pagi', 'Batu Alien & Museum Sisa Hartaku'],
-    isFeatured: false, color: 'orange', order: 4,
-  },
-];
+// Data bawaan dipindah ke lib agar bisa dipakai juga di server (JSON-LD)
+export { defaultPackagesData };
 
 // Keep backward-compat export
 export const packagesData = defaultPackagesData;
 
 export default function PackagesSection({ onSelectPackage }: PackagesSectionProps) {
   const [packages, setPackages] = useState<TourPackage[]>(defaultPackagesData);
+  const [mobileIdx, setMobileIdx] = useState(0);
+  const mobileScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch('/api/packages')
@@ -55,35 +31,132 @@ export default function PackagesSection({ onSelectPackage }: PackagesSectionProp
   }, []);
 
   return (
-    <section id="paket-wisata" className="relative py-20 lg:py-28 bg-[#fbfbfe] overflow-hidden border-t border-slate-200/60 section-edge">
-      <div className="section-line" aria-hidden="true" />
-      <div className="absolute inset-0 pointer-events-none opacity-20">
-        <Image src="/images/img_1_134_offroad_trail_watermark.png" alt="Offroad Trail Watermark" fill className="object-cover object-center mix-blend-multiply" />
-      </div>
+    <section id="paket-wisata" className="flow-section py-14 sm:py-20 lg:py-24 overflow-hidden">
+      <Parallax speed={0.3} className="absolute inset-0 pointer-events-none opacity-[0.18] overflow-hidden fade-mask-y" innerClassName="absolute inset-x-0 -top-[20%] -bottom-[20%]">
+        <Image src="/images/img_1_134_offroad_trail_watermark.png" alt="" aria-hidden="true" fill className="object-cover object-center mix-blend-multiply" />
+      </Parallax>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
-          <div>
-            <div className="font-space font-bold text-xs text-amber-600 tracking-widest uppercase mb-2">TARIF TRANSPARAN • ALL IN TANPA BIAYA TERSEMBUNYI</div>
-            <h2 className="font-outfit font-black text-3xl sm:text-4xl text-slate-950 tracking-tight">Pilihan Paket Wisata</h2>
-            <p className="font-jakarta text-slate-600 text-sm sm:text-base mt-2 max-w-2xl">
-              Format visual editorial dengan foto-dominan. Pilih petualangan yang pas dengan waktu liburan dan denyut keberanianmu!
-            </p>
+        <SectionHeading
+          chapter="02"
+          eyebrow="Tarif transparan • all-in"
+          title={<>Pilih <Accent>Petualanganmu</Accent></>}
+          description="Empat paket jeep lava tour Merapi dengan karakter berbeda. Harga per jeep sudah termasuk driver, BBM, retribusi, dan dokumentasi — tanpa biaya tersembunyi."
+          aside={
+            <div className="glass-card inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl font-space text-xs font-bold text-slate-800">
+              <Users className="w-4 h-4 text-amber-600" />
+              <span>1 Jeep = Maks. 4 Dewasa</span>
+            </div>
+          }
+        />
+
+        {/* HP: kartu ringkas geser kanan-kiri */}
+        <div className="md:hidden">
+          <div
+            ref={mobileScrollRef}
+            onScroll={(e) => {
+              const el = e.currentTarget;
+              const card = el.firstElementChild as HTMLElement | null;
+              if (!card) return;
+              const idx = Math.round(el.scrollLeft / (card.offsetWidth + 12));
+              if (idx !== mobileIdx) setMobileIdx(Math.max(0, Math.min(packages.length - 1, idx)));
+            }}
+            className="flex gap-3 overflow-x-auto snap-x snap-mandatory scroll-px-4 no-scrollbar -mx-4 px-4 pt-3 pb-4"
+          >
+            {packages.map((pkg) => (
+              <div
+                key={pkg.id}
+                className={`snap-start shrink-0 w-[78%] max-w-[300px] rounded-[24px] bg-white/95 overflow-hidden flex flex-col shadow-lg shadow-slate-900/5 ${
+                  pkg.isFeatured ? 'ring-2 ring-amber-500' : 'border border-white'
+                }`}
+              >
+                {/* Foto */}
+                <div className="relative h-32 w-full bg-slate-100">
+                  {pkg.image && <Image src={pkg.image} alt={`${pkg.title} jeep lava tour Merapi`} fill sizes="300px" className="object-cover" />}
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent" />
+                  <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between">
+                    {pkg.isFeatured ? (
+                      <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 font-space font-black text-[9px] tracking-wider uppercase">
+                        <Sparkles className="w-3 h-3 fill-current" /> Favorit
+                      </span>
+                    ) : pkg.badge ? (
+                      <span className="px-2 py-0.5 rounded-full bg-slate-950/70 backdrop-blur-sm text-white font-space font-bold text-[9px] tracking-wider uppercase">
+                        {pkg.badge}
+                      </span>
+                    ) : <span />}
+                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/90 text-slate-900 font-space font-bold text-[9px]">
+                      <Clock className="w-2.5 h-2.5 text-amber-600" /> {pkg.duration}
+                    </span>
+                  </div>
+                  <h3 className="absolute bottom-2.5 left-3 right-3 font-outfit font-extrabold text-lg text-white leading-tight">
+                    {pkg.title}
+                  </h3>
+                </div>
+
+                {/* Isi */}
+                <div className="p-3.5 flex-1 flex flex-col">
+                  <div className="flex items-baseline justify-between">
+                    <span className="font-outfit font-black text-xl text-slate-950">{pkg.price}</span>
+                    <span className="font-space font-semibold text-[10px] text-slate-500">/ jeep · 4 org</span>
+                  </div>
+                  <ul className="mt-2.5 space-y-1 flex-1">
+                    {pkg.destinations.slice(0, 3).map((d, i) => (
+                      <li key={i} className="flex items-center gap-1.5 font-work text-[11px] text-slate-600">
+                        <Check className="w-3 h-3 text-emerald-600 shrink-0" />
+                        <span className="line-clamp-1">{d}</span>
+                      </li>
+                    ))}
+                    {pkg.destinations.length > 3 && (
+                      <li className="pl-[18px] font-space font-bold text-[10px] text-amber-700">
+                        +{pkg.destinations.length - 3} destinasi lainnya
+                      </li>
+                    )}
+                  </ul>
+                  <button
+                    onClick={() => onSelectPackage ? onSelectPackage(pkg.title, pkg.price) : null}
+                    className={`mt-3 w-full py-2.5 rounded-full font-space font-bold text-[11px] flex items-center justify-center gap-1.5 active:scale-95 transition-transform ${
+                      pkg.isFeatured ? 'amber-gradient-btn text-slate-950' : 'bg-slate-900 text-white'
+                    }`}
+                  >
+                    <Compass className="w-3.5 h-3.5" />
+                    PESAN PAKET
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 shadow-sm self-start md:self-auto font-space text-xs font-bold text-slate-800">
-            <Users className="w-4 h-4 text-amber-600" />
-            <span>1 Jeep = Kapasitas Maks. 4 Dewasa</span>
+
+          {/* Indikator */}
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-1.5">
+              {packages.map((p, i) => (
+                <button
+                  key={p.id}
+                  aria-label={`Paket ${i + 1}`}
+                  onClick={() => {
+                    const el = mobileScrollRef.current;
+                    const card = el?.children[i] as HTMLElement | undefined;
+                    if (el && card) el.scrollTo({ left: card.offsetLeft - 16, behavior: 'smooth' });
+                  }}
+                  className={`h-2 rounded-full transition-all duration-300 ${i === mobileIdx ? 'w-6 bg-amber-500' : 'w-2 bg-slate-300'}`}
+                />
+              ))}
+            </div>
+            <span className="font-space text-[10px] font-medium text-slate-400">
+              Geser untuk paket lain <span className="text-amber-600 font-bold">→</span>
+            </span>
           </div>
         </div>
 
-        <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch ${packages.length <= 2 ? 'lg:grid-cols-2' : packages.length === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-4'}`}>
-          {packages.map((pkg) => (
+        {/* Tablet & desktop: grid */}
+        <div className={`hidden md:grid md:grid-cols-2 gap-6 items-stretch ${packages.length <= 2 ? 'lg:grid-cols-2' : packages.length === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-4'}`}>
+          {packages.map((pkg, idx) => (
+            <Reveal key={pkg.id} variant="up" delay={idx * 110} className="h-full">
             <div
-              key={pkg.id}
-              className={`relative rounded-2xl bg-white transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-sm hover:shadow-xl group ${
+              className={`card-lift card-shine h-full relative rounded-[28px] bg-white/90 backdrop-blur flex flex-col justify-between overflow-hidden shadow-sm group ${
                 pkg.isFeatured
                   ? 'border-2 border-amber-500 ring-4 ring-amber-500/10 -translate-y-1'
-                  : 'border border-slate-200 hover:border-slate-300'
+                  : 'border border-white shadow-slate-900/5 hover:border-amber-200'
               }`}
             >
               {pkg.isFeatured && (
@@ -96,7 +169,7 @@ export default function PackagesSection({ onSelectPackage }: PackagesSectionProp
               <div>
                 <div className="relative h-48 sm:h-52 w-full overflow-hidden bg-slate-100">
                   {pkg.image ? (
-                    <Image src={pkg.image} alt={pkg.title} fill className="object-cover object-center group-hover:scale-105 transition-transform duration-500" />
+                    <Image src={pkg.image} alt={`${pkg.title} jeep lava tour Merapi`} fill className="object-cover object-center group-hover:scale-110 transition-transform duration-[1200ms] ease-out" />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-slate-400 text-xs font-space">FOTO PAKET</div>
                   )}
@@ -142,7 +215,7 @@ export default function PackagesSection({ onSelectPackage }: PackagesSectionProp
               <div className="p-5 pt-0">
                 <button
                   onClick={() => onSelectPackage ? onSelectPackage(pkg.title, pkg.price) : null}
-                  className={`w-full py-3 rounded-xl font-space font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95 ${
+                  className={`w-full py-3 rounded-full font-space font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95 ${
                     pkg.isFeatured
                       ? 'amber-gradient-btn text-slate-950 shadow-md shadow-amber-500/20'
                       : 'bg-slate-900 text-white hover:bg-slate-800'
@@ -153,6 +226,7 @@ export default function PackagesSection({ onSelectPackage }: PackagesSectionProp
                 </button>
               </div>
             </div>
+            </Reveal>
           ))}
         </div>
       </div>

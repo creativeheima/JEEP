@@ -14,6 +14,10 @@ module.exports = {
         jakarta: ['var(--font-jakarta)', 'Plus Jakarta Sans', 'sans-serif'],
       },
       colors: {
+        sand: {
+          DEFAULT: '#faf8f4',
+          deep: '#f3efe7',
+        },
         merapi: {
           dark: '#020617',
           darker: '#0a0f1d',

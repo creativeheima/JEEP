@@ -1,8 +1,9 @@
-﻿'use client';
+'use client';
 
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { Shield, Award, Camera, MapPin, ArrowRight } from 'lucide-react';
+import { Shield, MapPin, ArrowRight } from 'lucide-react';
+import { Reveal, Parallax, ParallaxImage } from '@/components/motion';
 
 interface CollageSectionProps {
   onOpenBooking?: () => void;
@@ -37,32 +38,31 @@ export default function CollageSection({ onOpenBooking }: CollageSectionProps) {
   }, []);
 
   return (
-    <section id="tentang" className="relative py-20 lg:py-28 bg-white overflow-hidden border-t border-slate-100 section-edge">
-      <div className="section-line" aria-hidden="true" />
+    <section id="tentang" className="flow-section pt-20 pb-14 sm:pb-20 lg:pt-28 lg:pb-24 overflow-hidden">
       {/* Background Watermark */}
-      <div className="absolute inset-0 pointer-events-none opacity-20">
+      <Parallax speed={0.3} className="absolute inset-0 pointer-events-none opacity-[0.18] overflow-hidden fade-mask-y" innerClassName="absolute inset-x-0 -top-[20%] -bottom-[20%]">
         <Image
           src="/images/img_1_48_mount_merapi_watermark.png"
-          alt="Mount Merapi Watermark"
+          alt="" aria-hidden="true"
           fill
           className="object-cover object-top mix-blend-multiply"
         />
-      </div>
+      </Parallax>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
           
           {/* Left Column: Photo Collage */}
-          <div className="lg:col-span-6 relative">
+          <Reveal variant="left" className="lg:col-span-6 relative">
             <div className="relative mx-auto max-w-md lg:max-w-none">
               {/* Primary Image */}
-              <div className="relative h-[380px] sm:h-[440px] rounded-2xl overflow-hidden shadow-2xl border-4 border-white">
+              <div className="relative h-[380px] sm:h-[440px] rounded-[32px] overflow-hidden shadow-2xl shadow-slate-900/20 border-4 border-white group">
                 {content.image1 ? (
-                  <Image
+                  <ParallaxImage
                     src={content.image1}
                     alt={content.image1Caption || 'Gambar utama'}
-                    fill
-                    className="object-cover object-center hover:scale-105 transition-transform duration-700"
+                    speed={0.12}
+                    className="object-cover object-center group-hover:scale-105 transition-transform duration-700"
                   />
                 ) : (
                   <div className="w-full h-full bg-slate-200 flex items-center justify-center text-slate-400 text-sm">Belum ada gambar</div>
@@ -81,25 +81,29 @@ export default function CollageSection({ onOpenBooking }: CollageSectionProps) {
                 )}
               </div>
 
-              {/* Secondary Overlapping Card */}
+              {/* Secondary Overlapping Card — bergerak lebih cepat (lapisan depan) */}
               {content.image2 && (
-                <div className="absolute -bottom-8 -right-4 sm:-right-8 w-44 sm:w-56 h-48 sm:h-60 rounded-2xl overflow-hidden shadow-2xl border-4 border-white hidden sm:block">
+                <Parallax
+                  speed={-0.12}
+                  className="absolute -bottom-8 -right-4 sm:-right-8 w-44 sm:w-56 h-48 sm:h-60 hidden sm:block z-10"
+                  innerClassName="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl border-4 border-white group"
+                >
                   <Image
                     src={content.image2}
                     alt={content.image2Caption || 'Gambar kedua'}
                     fill
-                    className="object-cover object-center hover:scale-105 transition-transform duration-700"
+                    className="object-cover object-center group-hover:scale-110 transition-transform duration-700"
                   />
                   {content.image2Caption && (
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex items-end p-3">
                       <span className="font-space font-bold text-[11px] text-white tracking-wide">{content.image2Caption}</span>
                     </div>
                   )}
-                </div>
+                </Parallax>
               )}
 
               {/* Safety Badge */}
-              <div className="absolute -top-4 -right-2 sm:-right-4 bg-amber-400 text-slate-950 px-3.5 py-2 rounded-xl shadow-lg font-space font-extrabold text-xs flex items-center gap-1.5 border-2 border-white">
+              <div className="float-medium absolute z-20 -top-4 -right-2 sm:-right-4 bg-amber-400 text-slate-950 px-3.5 py-2 rounded-xl shadow-lg font-space font-extrabold text-xs flex items-center gap-1.5 border-2 border-white">
                 <Shield className="w-4 h-4 text-slate-950 fill-current" />
                 <div>
                   <div className="leading-none text-[11px] font-black">100% SAFETY</div>
@@ -107,64 +111,47 @@ export default function CollageSection({ onOpenBooking }: CollageSectionProps) {
                 </div>
               </div>
             </div>
-          </div>
+          </Reveal>
 
           {/* Right Column: Text */}
           <div className="lg:col-span-6 space-y-6">
-            <div className="flex items-center gap-2 font-space">
-              <span className="text-amber-600 font-bold text-xs tracking-wider">01 / INTRO</span>
-              <span className="text-slate-300">•</span>
-              <span className="text-amber-900 font-bold text-xs tracking-widest uppercase bg-amber-50 px-2.5 py-1 rounded border border-amber-200">
-                MERAPI JEEP EXPERIENCE
+            <Reveal variant="up" className="flex items-center gap-3">
+              <span className="font-space font-bold text-xs text-amber-600 tabular-nums">01</span>
+              <span className="h-px w-10 bg-gradient-to-r from-amber-500 to-amber-500/0" />
+              <span className="font-space font-bold text-[11px] tracking-[0.22em] uppercase text-slate-500">
+                Merapi Jeep Experience
               </span>
-            </div>
+            </Reveal>
 
-            <h2 className="font-outfit font-black text-2xl sm:text-3xl lg:text-4xl text-slate-950 tracking-tight leading-tight">
-              {content.headline}
-            </h2>
+            <Reveal variant="blur" delay={100}>
+              <h2 className="font-outfit font-black text-3xl sm:text-4xl lg:text-[2.75rem] leading-[1.08] text-slate-950 tracking-[-0.03em] text-balance">
+                {content.headline}
+              </h2>
+            </Reveal>
 
-            <p className="font-jakarta text-slate-600 text-sm sm:text-base leading-relaxed">
-              {content.description}
-            </p>
+            <Reveal variant="up" delay={200}>
+              <p className="font-jakarta text-slate-600 text-sm sm:text-base leading-relaxed">
+                {content.description}
+              </p>
+            </Reveal>
 
-            <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-50 border border-slate-200 text-xs font-space font-bold text-slate-800">
+            <Reveal variant="up" delay={260}>
+            <div className="glass-card inline-flex items-center gap-2 px-3.5 py-2 rounded-full text-[11px] font-space font-bold text-slate-800">
               <MapPin className="w-3.5 h-3.5 text-amber-600" />
               <span>LAT -7.5407° S | LONG 110.4457° E • SLEMAN, D.I. YOGYAKARTA</span>
             </div>
+            </Reveal>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-slate-100">
-              <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-100 hover:border-amber-200 transition-colors">
-                <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center mb-2">
-                  <Shield className="w-4 h-4" />
-                </div>
-                <h4 className="font-outfit font-bold text-xs sm:text-sm text-slate-900 mb-1">SNI &amp; Rollcage</h4>
-                <p className="font-work text-[11px] text-slate-500 leading-tight">Kabin kokoh dan helm berstandar SNI.</p>
-              </div>
-              <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-100 hover:border-amber-200 transition-colors">
-                <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center mb-2">
-                  <Award className="w-4 h-4" />
-                </div>
-                <h4 className="font-outfit font-bold text-xs sm:text-sm text-slate-900 mb-1">Asuransi Lengkap</h4>
-                <p className="font-work text-[11px] text-slate-500 leading-tight">Kemitraan resmi Jasa Raharja seluruh tamu.</p>
-              </div>
-              <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-100 hover:border-amber-200 transition-colors">
-                <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center mb-2">
-                  <Camera className="w-4 h-4" />
-                </div>
-                <h4 className="font-outfit font-bold text-xs sm:text-sm text-slate-900 mb-1">Free Dokumentasi</h4>
-                <p className="font-work text-[11px] text-slate-500 leading-tight">Driver siap abadikan momen sinematik terbaik.</p>
-              </div>
-            </div>
 
-            <div className="flex flex-wrap items-center gap-4 pt-4">
-              <a href="#paket-wisata" className="amber-gradient-btn px-6 py-3 rounded-xl font-space font-bold text-xs text-slate-950 shadow-md flex items-center gap-2 group">
+            <Reveal variant="up" delay={500} className="flex flex-wrap items-center gap-4 pt-4">
+              <a href="#paket-wisata" className="amber-gradient-btn px-6 py-3 rounded-full font-space font-bold text-xs text-slate-950 shadow-md flex items-center gap-2 group">
                 <span>PILIH RUTE PERJALANAN</span>
                 <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
               </a>
-              <a href="#fasilitas" className="px-6 py-3 rounded-xl font-space font-bold text-xs text-slate-800 bg-slate-100 hover:bg-slate-200 transition-colors">
+              <a href="#fasilitas" className="glass-card px-6 py-3 rounded-full font-space font-bold text-xs text-slate-800 hover:text-amber-700 transition-colors">
                 KENALI KAMI
               </a>
-            </div>
+            </Reveal>
           </div>
         </div>
       </div>
