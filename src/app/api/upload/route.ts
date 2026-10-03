@@ -144,8 +144,11 @@ export async function POST(request: Request) {
     } catch {
       const diag = getSupabaseEnvDiagnostics();
       const statusText = `URL: ${diag.hasUrl ? 'Terbaca' : 'KOSONG'}, ANON_KEY: ${diag.hasAnonKey ? 'Terbaca' : 'KOSONG'}, SERVICE_KEY: ${diag.hasServiceRoleKey ? 'Terbaca' : 'KOSONG'}`;
+      const foundNotice = diag.detectedKeys.length > 0
+        ? `Variabel terdeteksi: [${diag.detectedKeys.join(', ')}].`
+        : 'TIDAK ADA satupun variabel Supabase yang terdaftar di project Vercel ini.';
       throw new Error(
-        `Server Vercel belum membaca Environment Variables Supabase (${statusText}). Silakan periksa Vercel Settings > Environment Variables, pastikan terpilih "Production", lalu klik Redeploy.`
+        `Hosting Vercel belum membaca Environment Variables Supabase (${statusText}). ${foundNotice} Pastikan variabel diisi di Vercel Settings > Environment Variables (centang Production), lalu klik Redeploy.`
       );
     }
   } catch (error) {

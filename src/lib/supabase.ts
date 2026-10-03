@@ -1,9 +1,21 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
+/** Cari value dari process.env secara toleran (abaikan spasi, huruf besar/kecil, atau variasi nama) */
+function findEnvValue(pattern: RegExp): string {
+  for (const [key, value] of Object.entries(process.env)) {
+    if (pattern.test(key.trim()) && typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+  return '';
+}
+
 export function getSupabaseUrl(): string {
   return (
     process.env.NEXT_PUBLIC_SUPABASE_URL ||
     process.env.SUPABASE_URL ||
+    findEnvValue(/^next_public_supabase.*url$/i) ||
+    findEnvValue(/^supabase.*url$/i) ||
     ''
   ).trim();
 }
@@ -12,6 +24,8 @@ export function getSupabaseServiceRoleKey(): string {
   return (
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
     process.env.SUPABASE_SERVICE_KEY ||
+    findEnvValue(/^supabase.*service.*(role|key)?$/i) ||
+    findEnvValue(/^supabase.*secret.*key?$/i) ||
     ''
   ).trim();
 }
@@ -21,6 +35,9 @@ export function getSupabaseAnonKey(): string {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
     process.env.SUPABASE_ANON_KEY ||
     process.env.SUPABASE_KEY ||
+    findEnvValue(/^next_public_supabase.*anon.*(key)?$/i) ||
+    findEnvValue(/^supabase.*anon.*(key)?$/i) ||
+    findEnvValue(/^next_public_supabase.*public.*(key)?$/i) ||
     ''
   ).trim();
 }
@@ -66,12 +83,19 @@ export function getSupabaseEnvDiagnostics() {
   const url = getSupabaseUrl();
   const anon = getSupabaseAnonKey();
   const service = getSupabaseServiceRoleKey();
+  
+  // Kumpulkan nama key di process.env yang berkaitan
+  const detectedKeys = Object.keys(process.env).filter(
+    (k) => /supabase|project.*url|anon|service_role/i.test(k)
+  );
+
   return {
     isConfigured: isSupabaseConfigured(),
     hasUrl: Boolean(url),
     urlPreview: url ? `${url.slice(0, 16)}...` : 'KOSONG',
     hasAnonKey: Boolean(anon),
     hasServiceRoleKey: Boolean(service),
+    detectedKeys,
   };
 }
 
