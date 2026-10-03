@@ -11,7 +11,7 @@
     "lastLogin": "2026-10-03T16:08:28.432Z"
   },
   {
-    "id": "usr-superuser-1",
+    "id": "usr-superuser-2",
     "username": "superuser",
     "name": "Superuser Master",
     "email": "superuser@merapijeep.com",
@@ -20,5 +20,15 @@
     "isActive": true,
     "createdAt": "2026-10-03T13:57:14.591Z",
     "lastLogin": "2026-10-03T16:17:36.419Z"
+  },
+  {
+    "id": "usr-staff-3",
+    "username": "staff",
+    "name": "Staf Operasional",
+    "email": "staff@merapijeep.com",
+    "role": "ADMIN",
+    "password": "staff123",
+    "isActive": true,
+    "createdAt": "2026-10-03T13:57:14.591Z"
   }
 ]

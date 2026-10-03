@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDbConfig, saveDbConfig } from '@/lib/dbConfig';
+import { getDbConfig, saveDbConfig, resetDbConfigCache } from '@/lib/dbConfig';
 import { testSupabaseConnection, resetSupabaseCache } from '@/lib/supabase';
 import { testMySqlConnection, initMySqlSchema } from '@/lib/mysql';
 
@@ -127,13 +127,15 @@ export async function POST(request: Request) {
     );
 
     if (!ok) {
+      console.error('[DB Config] saveDbConfig returned false for activeMode:', activeMode);
       return NextResponse.json(
-        { success: false, error: 'Gagal menyimpan file konfigurasi database' },
+        { success: false, error: 'Gagal menyimpan konfigurasi database ke file server. Pastikan folder `data/` memiliki izin tulis (write permission) dan tidak dikunci oleh proses lain.' },
         { status: 500 }
       );
     }
 
-    // Reset runtime cache client agar konfigurasi baru langsung berlaku
+    // Reset runtime cache agar konfigurasi baru langsung berlaku
+    resetDbConfigCache();
     resetSupabaseCache();
 
     return NextResponse.json({

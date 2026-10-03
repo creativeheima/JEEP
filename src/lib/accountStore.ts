@@ -27,7 +27,7 @@ const INITIAL_ACCOUNTS: AdminAccount[] = [
     createdAt: new Date().toISOString(),
   },
   {
-    id: 'usr-admin-1',
+    id: 'usr-staff-3',
     username: 'staff',
     name: 'Staf Operasional',
     email: 'staff@merapijeep.com',

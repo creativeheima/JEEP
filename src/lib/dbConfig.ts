@@ -26,6 +26,10 @@ const DEFAULT_CONFIG: SystemDatabaseConfig = {
 
 let cachedConfig: SystemDatabaseConfig | null = null;
 
+export function resetDbConfigCache() {
+  cachedConfig = null;
+}
+
 function ensureDirExists() {
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -42,24 +46,27 @@ export function getDbConfig(): SystemDatabaseConfig {
       const raw = fs.readFileSync(CONFIG_FILE, 'utf-8');
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === 'object') {
+        // Gunakan ?? (nullish) agar nilai kosong ("") tidak tertimpa env-var
+        const sbUrl = parsed.supabase?.url ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+        const sbAnon = parsed.supabase?.anonKey ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
+        const sbSvc = parsed.supabase?.serviceRoleKey ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
         cachedConfig = {
-          activeMode: parsed.activeMode || 'supabase',
+          activeMode: parsed.activeMode ?? 'supabase',
           supabase: {
-            url: parsed.supabase?.url || process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-            anonKey: parsed.supabase?.anonKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-            serviceRoleKey:
-              parsed.supabase?.serviceRoleKey || process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+            url: typeof sbUrl === 'string' ? sbUrl : '',
+            anonKey: typeof sbAnon === 'string' ? sbAnon : '',
+            serviceRoleKey: typeof sbSvc === 'string' ? sbSvc : '',
           },
           mysql: {
-            host: parsed.mysql?.host || 'localhost',
+            host: parsed.mysql?.host ?? 'localhost',
             port: Number(parsed.mysql?.port) || 3306,
-            database: parsed.mysql?.database || 'merapi_jeep_adventure',
-            user: parsed.mysql?.user || 'root',
-            password: parsed.mysql?.password || '',
+            database: parsed.mysql?.database ?? 'merapi_jeep_adventure',
+            user: parsed.mysql?.user ?? 'root',
+            password: parsed.mysql?.password ?? '',
             ssl: Boolean(parsed.mysql?.ssl),
           },
-          updatedAt: parsed.updatedAt || new Date().toISOString(),
-          updatedBy: parsed.updatedBy || 'system',
+          updatedAt: parsed.updatedAt ?? new Date().toISOString(),
+          updatedBy: parsed.updatedBy ?? 'system',
         };
         return cachedConfig;
       }
@@ -102,8 +109,8 @@ export function saveDbConfig(
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(merged, null, 2), 'utf-8');
     cachedConfig = merged;
     return true;
-  } catch (err) {
-    console.error('Error saving db_config.json:', err);
+  } catch (err: any) {
+    console.error('Error saving db_config.json:', err?.message || err);
     return false;
   }
 }
