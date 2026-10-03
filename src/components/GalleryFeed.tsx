@@ -4,6 +4,16 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { ChevronDown, ChevronUp, Heart, Instagram, Play, Share2, X } from 'lucide-react';
 import { GalleryItem } from '@/types/gallery';
+import {
+  videoSourceType,
+  parseDriveId,
+  driveVideoPreviewUrl,
+  driveThumbnailUrl,
+  instagramEmbedUrl,
+  youTubeEmbedUrl,
+  isDirectVideoUrl,
+  isInstagramUrl,
+} from '@/lib/media';
 
 interface GalleryFeedProps {
   items: GalleryItem[];
@@ -11,16 +21,35 @@ interface GalleryFeedProps {
   onClose: () => void;
 }
 
-const isVideoItem = (item: GalleryItem) => item.type === 'INSTAGRAM_VIDEO' || item.category === 'VIDEO REELS';
+const isVideoItem = (item: GalleryItem) =>
+  item.type === 'INSTAGRAM_VIDEO' || item.type === 'VIDEO' || item.category === 'VIDEO REELS';
 
-const getInstagramEmbedUrl = (url?: string) => {
-  if (!url) return null;
-  const match = url.match(/instagram\.com\/(?:reel|p)\/([^/?#&]+)/i);
-  return match?.[1] ? `https://www.instagram.com/reel/${match[1]}/embed/` : null;
-};
+/** Cara memutar video: embed iframe (Drive / Instagram / YouTube) atau file video langsung. */
+function playbackOf(item: GalleryItem): { embed: string | null; file: string | null } {
+  const src = item.type === 'INSTAGRAM_VIDEO' ? item.instagramUrl || item.mediaUrl : item.mediaUrl;
+  switch (videoSourceType(src)) {
+    case 'drive': {
+      const id = parseDriveId(src);
+      return { embed: id ? driveVideoPreviewUrl(id) : null, file: null };
+    }
+    case 'instagram':
+      return { embed: instagramEmbedUrl(src), file: null };
+    case 'youtube':
+      return { embed: youTubeEmbedUrl(src), file: null };
+    case 'file':
+      return { embed: null, file: src };
+    default:
+      return { embed: instagramEmbedUrl(item.instagramUrl), file: null };
+  }
+}
+
 
 const imageOf = (item: GalleryItem) => {
-  const src = isVideoItem(item) ? item.thumbnailUrl || item.mediaUrl : item.mediaUrl;
+  const driveId = isVideoItem(item) ? parseDriveId(item.mediaUrl) : null;
+  const src = isVideoItem(item)
+    ? item.thumbnailUrl || (driveId ? driveThumbnailUrl(driveId) : '') || item.mediaUrl
+    : item.mediaUrl;
+  if (src && isDirectVideoUrl(src)) return null;
   return src && !/instagram\.com/i.test(src) ? src : null;
 };
 
@@ -146,7 +175,8 @@ export default function GalleryFeed({ items, startIndex, onClose }: GalleryFeedP
         {items.map((item, idx) => {
           const img = imageOf(item);
           const isVideo = isVideoItem(item);
-          const embed = isVideo ? getInstagramEmbedUrl(item.instagramUrl || item.mediaUrl) : null;
+          const { embed, file: videoFile } = isVideo ? playbackOf(item) : { embed: null, file: null };
+          const canPlay = !!(embed || videoFile);
           const isActive = idx === active;
           const near = Math.abs(idx - active) <= 1;
           const isLiked = !!liked[item.id];
@@ -166,7 +196,15 @@ export default function GalleryFeed({ items, startIndex, onClose }: GalleryFeedP
 
               {/* Media utama */}
               <div className="absolute inset-0 flex items-center justify-center" onClick={(e) => handleTap(e, item)}>
-                {isVideo && playing === item.id && embed ? (
+                {isVideo && playing === item.id && videoFile ? (
+                  <video
+                    src={videoFile}
+                    controls
+                    autoPlay
+                    playsInline
+                    className="w-full h-full max-h-[85dvh] sm:max-w-[560px] object-contain bg-black"
+                  />
+                ) : isVideo && playing === item.id && embed ? (
                   <iframe
                     src={embed}
                     className="w-full max-w-[420px] h-full max-h-[85dvh] border-0 bg-black rounded-none sm:rounded-3xl"
@@ -177,6 +215,8 @@ export default function GalleryFeed({ items, startIndex, onClose }: GalleryFeedP
                   <div className={`relative w-full h-full sm:max-w-[min(100%,560px)] ${isActive ? 'feed-zoom' : ''}`}>
                     <Image src={img} alt={item.title} fill sizes="(max-width: 640px) 100vw, 560px" priority={isActive} className="object-contain" />
                   </div>
+                ) : videoFile && near ? (
+                  <video src={`${videoFile}#t=0.5`} muted playsInline preload="metadata" className="w-full h-full max-h-[85dvh] sm:max-w-[560px] object-contain" />
                 ) : (
                   <Instagram className="w-16 h-16 text-white/20" />
                 )}
@@ -185,7 +225,7 @@ export default function GalleryFeed({ items, startIndex, onClose }: GalleryFeedP
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (embed) setPlaying(item.id);
+                      if (canPlay) setPlaying(item.id);
                       else window.open(item.instagramUrl || item.mediaUrl, '_blank');
                     }}
                     className="absolute w-20 h-20 rounded-full bg-white/15 backdrop-blur-md border border-white/30 flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
@@ -212,7 +252,7 @@ export default function GalleryFeed({ items, startIndex, onClose }: GalleryFeedP
                     <span className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-400 to-orange-600 flex items-center justify-center font-outfit font-black text-xs text-slate-950">MJ</span>
                     <span className="font-space font-bold text-xs">@merapijeep_adventure</span>
                     <span className="px-2 py-0.5 rounded-full bg-white/15 backdrop-blur-sm font-space font-bold text-[9px] tracking-wider uppercase">
-                      {isVideo ? 'Reel' : item.category}
+                      {isVideo ? (item.type === 'INSTAGRAM_VIDEO' ? 'Reel' : 'Video') : item.category}
                     </span>
                   </div>
                   <h3 className="font-outfit font-bold text-lg sm:text-xl leading-snug drop-shadow">{item.title}</h3>
@@ -244,7 +284,7 @@ export default function GalleryFeed({ items, startIndex, onClose }: GalleryFeedP
                   </span>
                   <span className="font-space text-[10px] font-bold">Bagikan</span>
                 </button>
-                {(item.instagramUrl || (isVideo && item.mediaUrl)) && (
+                {(item.instagramUrl || isInstagramUrl(item.mediaUrl)) && (
                   <a href={item.instagramUrl || item.mediaUrl} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1" aria-label="Buka di Instagram">
                     <span className="w-12 h-12 rounded-full bg-gradient-to-tr from-purple-600 via-pink-600 to-amber-500 flex items-center justify-center">
                       <Instagram className="w-5 h-5" />

@@ -95,9 +95,29 @@ const INITIAL_BOOKINGS: Booking[] = [
   }
 ];
 
-function ensureDirectory() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+/**
+ * Penulisan file lokal dibuat "aman": di hosting serverless (Vercel, Netlify, dll.)
+ * folder project bersifat READ-ONLY, sehingga writeFileSync akan error (EROFS).
+ * Error itu sebelumnya membuat seluruh proses booking gagal walau Supabase sukses.
+ */
+function ensureDirectory(): boolean {
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Tulis cache lokal; kembalikan false (bukan throw) bila filesystem tidak bisa ditulis. */
+function tryWriteLocal(bookings: Booking[]): boolean {
+  try {
+    if (!ensureDirectory()) return false;
+    fs.writeFileSync(DATA_FILE, JSON.stringify(bookings, null, 2), 'utf8');
+    return true;
+  } catch (err) {
+    console.warn('[bookingStore] Tidak bisa menulis data/bookings.json:', (err as Error).message);
+    return false;
   }
 }
 
@@ -158,10 +178,9 @@ function fromDatabaseRow(row: Record<string, any>): Booking {
 // LOCAL FALLBACK OPERATIONS
 // -------------------------------------------------------------
 export function getBookings(): Booking[] {
-  ensureDirectory();
   if (!fs.existsSync(DATA_FILE)) {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(INITIAL_BOOKINGS, null, 2), 'utf8');
-    return INITIAL_BOOKINGS;
+    tryWriteLocal(INITIAL_BOOKINGS);
+    return [...INITIAL_BOOKINGS];
   }
   try {
     const raw = fs.readFileSync(DATA_FILE, 'utf8');
@@ -171,9 +190,8 @@ export function getBookings(): Booking[] {
   }
 }
 
-export function saveBookings(bookings: Booking[]) {
-  ensureDirectory();
-  fs.writeFileSync(DATA_FILE, JSON.stringify(bookings, null, 2), 'utf8');
+export function saveBookings(bookings: Booking[]): boolean {
+  return tryWriteLocal(bookings);
 }
 
 export function getBookingByCode(code: string): Booking | undefined {
@@ -233,34 +251,51 @@ export async function fetchSingleBooking(idOrCode: string): Promise<Booking | nu
 }
 
 export async function insertNewBooking(booking: Booking): Promise<Booking> {
-  if (isSupabaseConfigured() && supabase) {
-    try {
-      const row = toDatabaseRow(booking);
-      const { data, error } = await supabase
-        .from('bookings')
-        .insert([row])
-        .select()
-        .single();
+  let supabaseError = '';
 
-      if (error) {
-        console.error('Supabase insert error, saving locally:', error.message);
-      } else if (data) {
-        // Juga simpan cache lokal
-        const local = getBookings();
-        local.unshift(booking);
-        saveBookings(local);
-        return fromDatabaseRow(data);
+  if (isSupabaseConfigured() && supabase) {
+    // Coba hingga 3x bila kode booking kebetulan bentrok (kolom booking_code unik)
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const row = toDatabaseRow(booking);
+        const { data, error } = await supabase.from('bookings').insert([row]).select().single();
+
+        if (!error && data) {
+          const saved = fromDatabaseRow(data);
+          // Cache lokal hanya pelengkap — gagal pun tidak masalah
+          const local = getBookings();
+          local.unshift(saved);
+          tryWriteLocal(local);
+          return saved;
+        }
+
+        supabaseError = error?.message || 'Unknown Supabase error';
+        const isDuplicate = error?.code === '23505' || /duplicate key/i.test(supabaseError);
+        if (isDuplicate) {
+          booking = { ...booking, bookingCode: generateBookingCode(), id: `bkg-${Date.now()}-${attempt + 1}` };
+          continue;
+        }
+        console.error('[bookingStore] Supabase insert error:', supabaseError);
+        break;
+      } catch (err) {
+        supabaseError = (err as Error).message;
+        console.error('[bookingStore] Supabase insert exception:', supabaseError);
+        break;
       }
-    } catch (err) {
-      console.error('Supabase insert exception, saving locally:', err);
     }
   }
 
-  // Local fallback
+  // Fallback: simpan ke file lokal (berfungsi saat development / server biasa)
   const bookings = getBookings();
   bookings.unshift(booking);
-  saveBookings(bookings);
-  return booking;
+  if (tryWriteLocal(bookings)) return booking;
+
+  // Supabase gagal DAN file tidak bisa ditulis → beri pesan yang jelas
+  throw new Error(
+    supabaseError
+      ? `Database menolak data: ${supabaseError}`
+      : 'Penyimpanan belum dikonfigurasi. Isi NEXT_PUBLIC_SUPABASE_URL & kunci Supabase di environment hosting.'
+  );
 }
 
 export async function updateExistingBooking(

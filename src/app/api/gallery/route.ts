@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { fetchAllGalleryItems, insertGalleryItem } from '@/lib/galleryStore';
 import { GalleryItem } from '@/types/gallery';
+import { isInstagramUrl, parseDriveId, driveThumbnailUrl } from '@/lib/media';
 
 export async function GET() {
   try {
@@ -23,16 +24,19 @@ export async function POST(request: Request) {
       );
     }
 
-    const isVideo = body.type === 'INSTAGRAM_VIDEO' || body.category === 'VIDEO REELS';
+    const media = String(body.mediaUrl).trim();
+    const isVideo = body.type === 'INSTAGRAM_VIDEO' || body.type === 'VIDEO' || body.category === 'VIDEO REELS';
+    const type: GalleryItem['type'] = !isVideo ? 'PHOTO' : isInstagramUrl(media) ? 'INSTAGRAM_VIDEO' : 'VIDEO';
+    const driveId = isVideo ? parseDriveId(media) : null;
 
     const newItem: GalleryItem = {
       id: 'gal-' + Date.now(),
-      type: isVideo ? 'INSTAGRAM_VIDEO' : 'PHOTO',
+      type,
       title: body.title.trim(),
       category: body.category || (isVideo ? 'VIDEO REELS' : 'JEEP ACTION'),
-      mediaUrl: body.mediaUrl.trim(),
-      instagramUrl: body.instagramUrl?.trim() || (isVideo ? body.mediaUrl.trim() : undefined),
-      thumbnailUrl: body.thumbnailUrl?.trim() || undefined,
+      mediaUrl: media,
+      instagramUrl: body.instagramUrl?.trim() || (isInstagramUrl(media) ? media : undefined),
+      thumbnailUrl: body.thumbnailUrl?.trim() || (driveId ? driveThumbnailUrl(driveId) : undefined),
       caption: body.caption?.trim() || undefined,
       createdAt: new Date().toISOString(),
     };

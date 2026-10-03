@@ -8,11 +8,22 @@ import { GalleryItem } from '@/types/gallery';
 import { Reveal } from '@/components/motion';
 import SectionHeading, { Accent } from '@/components/SectionHeading';
 import GalleryFeed from '@/components/GalleryFeed';
+import { parseDriveId, driveThumbnailUrl, isInstagramUrl, isDirectVideoUrl } from '@/lib/media';
 
 const PREVIEW_MOBILE = 5;
 const PREVIEW_DESKTOP = 6;
 
-const isVideoItem = (item: GalleryItem) => item.type === 'INSTAGRAM_VIDEO' || item.category === 'VIDEO REELS';
+const isVideoItem = (item: GalleryItem) =>
+  item.type === 'INSTAGRAM_VIDEO' || item.type === 'VIDEO' || item.category === 'VIDEO REELS';
+
+/** Gambar sampul untuk sebuah item (foto, thumbnail video, atau thumbnail otomatis Google Drive). */
+const coverOf = (item: GalleryItem): string | null => {
+  if (!isVideoItem(item)) return item.mediaUrl || null;
+  if (item.thumbnailUrl) return item.thumbnailUrl;
+  const driveId = parseDriveId(item.mediaUrl);
+  if (driveId) return driveThumbnailUrl(driveId);
+  return null;
+};
 
 /** Satu kotak foto/video. `compact` = versi kecil untuk HP & galeri lengkap. */
 function GalleryTile({
@@ -27,8 +38,10 @@ function GalleryTile({
   compact?: boolean;
 }) {
   const isVideo = isVideoItem(item);
-  const displayImage = isVideo ? item.thumbnailUrl || item.mediaUrl : item.mediaUrl;
+  const displayImage = coverOf(item);
   const showImage = !!displayImage && !/instagram\.com/i.test(displayImage);
+  const isInsta = item.type === 'INSTAGRAM_VIDEO' || isInstagramUrl(item.mediaUrl);
+  const fileVideo = isVideo && !showImage && isDirectVideoUrl(item.mediaUrl);
 
   return (
     <button
@@ -46,6 +59,14 @@ function GalleryTile({
           sizes={compact ? '(max-width: 1024px) 50vw, 25vw' : '(max-width: 1024px) 100vw, 33vw'}
           className="object-cover object-center group-hover:scale-110 transition-transform duration-[1200ms] ease-out"
         />
+      ) : fileVideo ? (
+        <video
+          src={`${item.mediaUrl}#t=0.5`}
+          muted
+          playsInline
+          preload="metadata"
+          className="absolute inset-0 w-full h-full object-cover"
+        />
       ) : (
         <div className="absolute inset-0 flex items-center justify-center">
           <Instagram className="w-10 h-10 text-slate-700" />
@@ -59,7 +80,7 @@ function GalleryTile({
         {isVideo ? (
           <span className={`flex items-center gap-1 bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 text-white font-space font-bold tracking-wider rounded-full shadow-lg ${compact ? 'text-[8px] px-2 py-0.5' : 'text-[10px] px-2.5 py-1'}`}>
             <Instagram className={compact ? 'w-2.5 h-2.5' : 'w-3.5 h-3.5'} />
-            REEL
+            {isInsta ? 'REEL' : 'VIDEO'}
           </span>
         ) : (
           <span className={`bg-slate-950/60 backdrop-blur-sm text-white font-space font-bold tracking-wider rounded-full ${compact ? 'text-[8px] px-2 py-0.5' : 'text-[10px] px-2.5 py-1'}`}>
@@ -136,7 +157,7 @@ export default function GallerySection() {
   const tabs = [
     'SEMUA',
     'FOTO',
-    'VIDEO INSTAGRAM',
+    'VIDEO',
     'JEEP ACTION',
     'DESTINASI',
     'WISATAWAN',
@@ -157,7 +178,7 @@ export default function GallerySection() {
   const filterBy = (tab: string) => (item: GalleryItem) => {
     if (tab === 'SEMUA') return true;
     if (tab === 'FOTO') return item.type === 'PHOTO';
-    if (tab === 'VIDEO INSTAGRAM') return isVideoItem(item);
+    if (tab === 'VIDEO') return isVideoItem(item);
     return item.category === tab;
   };
   const filteredItems = items.filter(filterBy(activeTab));
@@ -166,7 +187,7 @@ export default function GallerySection() {
   const renderTabs = (current: string, onChange: (t: string) => void, dark = false) => (
     <div className="flex items-center gap-1 overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap">
       {tabs.map((tab) => {
-        const isVideoTab = tab === 'VIDEO INSTAGRAM';
+        const isVideoTab = tab === 'VIDEO';
         const isActive = current === tab;
         return (
           <button

@@ -1,4 +1,5 @@
-export type GalleryItemType = 'PHOTO' | 'INSTAGRAM_VIDEO';
+/** PHOTO = foto, INSTAGRAM_VIDEO = reel Instagram, VIDEO = video upload / Google Drive / YouTube */
+export type GalleryItemType = 'PHOTO' | 'INSTAGRAM_VIDEO' | 'VIDEO';
 
 export type GalleryCategory = 'JEEP ACTION' | 'DESTINASI' | 'WISATAWAN' | 'VIDEO REELS';
 

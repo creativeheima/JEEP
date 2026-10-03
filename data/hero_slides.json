@@ -24,7 +24,9 @@
     "showText": true,
     "showButton": true,
     "order": 3,
-    "createdAt": "2026-10-01T00:08:23.119Z"
+    "createdAt": "2026-10-01T00:08:23.119Z",
+    "headline": "",
+    "subheadline": ""
   },
   {
     "id": "slide-4",

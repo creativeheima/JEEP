@@ -155,3 +155,29 @@ create policy "Allow public delete hero_slides" on public.hero_slides for delete
 
 
 
+
+
+-- =================================================================
+-- 8. STORAGE: UPLOAD FOTO & VIDEO DARI HALAMAN ADMIN (bucket "media")
+--    Dipakai oleh fitur "Upload File" di admin (galeri, slide, collage, paket).
+--    Disarankan mengisi SUPABASE_SERVICE_ROLE_KEY di environment server.
+-- =================================================================
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('media', 'media', true, 209715200) -- 200 MB per file
+on conflict (id) do update set public = true, file_size_limit = 209715200;
+
+-- Semua orang boleh MELIHAT file media (untuk ditampilkan di website)
+drop policy if exists "Public read media" on storage.objects;
+create policy "Public read media"
+on storage.objects for select
+using (bucket_id = 'media');
+
+-- -----------------------------------------------------------------
+-- OPSIONAL (TIDAK DISARANKAN): hanya bila Anda TIDAK mau memakai
+-- SUPABASE_SERVICE_ROLE_KEY. Policy ini membuat siapa pun yang memegang
+-- anon key (yang memang terlihat publik di browser) bisa upload ke bucket "media".
+-- -----------------------------------------------------------------
+-- drop policy if exists "Anon upload media" on storage.objects;
+-- create policy "Anon upload media"
+-- on storage.objects for insert
+-- with check (bucket_id = 'media');

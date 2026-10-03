@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { SITE } from '@/lib/site';
 import Link from 'next/link';
 import {
   X,
@@ -54,6 +55,7 @@ export default function BookingModal({
 
   const [submitting, setSubmitting] = useState(false);
   const [submittedBooking, setSubmittedBooking] = useState<Booking | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Prevent background scroll when modal is open
   useEffect(() => {
@@ -71,8 +73,13 @@ export default function BookingModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError(null);
     if (!name.trim() || !phone.trim()) {
-      alert('Nama dan Nomor WhatsApp wajib diisi!');
+      setSubmitError('Nama dan Nomor WhatsApp wajib diisi.');
+      return;
+    }
+    if (phone.replace(/\D/g, '').length < 9) {
+      setSubmitError('Nomor WhatsApp tidak valid. Contoh: 0812xxxxxxx');
       return;
     }
 
@@ -95,18 +102,41 @@ export default function BookingModal({
         }),
       });
 
-      const json = await res.json();
-      if (json.success && json.data) {
+      // Server bisa membalas halaman HTML (mis. error 500/504 dari hosting) — jangan langsung res.json()
+      const raw = await res.text();
+      let json: { success?: boolean; data?: Booking; error?: string } = {};
+      try {
+        json = raw ? JSON.parse(raw) : {};
+      } catch {
+        json = { success: false, error: `Server error (${res.status})` };
+      }
+
+      if (res.ok && json.success && json.data) {
         setSubmittedBooking(json.data);
       } else {
-        alert('Gagal mengirim reservasi: ' + (json.error || 'Terjadi kesalahan'));
+        console.error('Booking gagal:', res.status, json.error || raw.slice(0, 200));
+        setSubmitError(json.error || `Server error (${res.status})`);
       }
     } catch (err) {
       console.error(err);
-      alert('Terjadi kesalahan jaringan.');
+      setSubmitError('Koneksi terputus. Periksa internet Anda lalu coba lagi.');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  /** Cadangan: bila sistem gagal, pesanan tetap bisa dikirim lewat WhatsApp */
+  const handleSendViaWhatsApp = () => {
+    const lines = [
+      'Halo Admin Merapi Jeep Adventure, saya ingin reservasi:',
+      `Nama: ${name || '-'}`,
+      `No. WA: ${phone || '-'}`,
+      `Paket: ${selectedPkg}`,
+      `Tanggal: ${date || '-'} • ${time}`,
+      `Jumlah: ${jeepCount} jeep / ${passengers} orang`,
+      notes ? `Catatan: ${notes}` : '',
+    ].filter(Boolean);
+    window.open(`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(lines.join('\n'))}`, '_blank');
   };
 
   const handleOpenWaChat = () => {
@@ -122,7 +152,7 @@ export default function BookingModal({
       (submittedBooking.notes ? `📝 *Catatan:* ${encodeURIComponent(submittedBooking.notes)}%0A` : '') +
       `%0ASaya ingin konfirmasi kesepakatan harga & pembayaran DP untuk di-approve tiketnya. Terima kasih! 🌋`;
 
-    window.open(`https://wa.me/6281234567890?text=${message}`, '_blank');
+    window.open(`https://wa.me/${SITE.whatsapp}?text=${message}`, '_blank');
   };
 
   return (
@@ -439,6 +469,20 @@ export default function BookingModal({
         {/* Sticky Footer for Form Submission (Only when form is active) */}
         {!submittedBooking && (
           <div className="p-3.5 sm:p-5 border-t border-slate-100 bg-white/95 backdrop-blur-xs shrink-0 z-20">
+            {submitError && (
+              <div role="alert" className="mb-3 rounded-xl border border-red-200 bg-red-50 p-3">
+                <p className="font-work text-xs text-red-700 leading-snug">
+                  <strong>Reservasi belum terkirim.</strong> {submitError}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleSendViaWhatsApp}
+                  className="mt-2 w-full h-10 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-space font-bold text-[11px] tracking-wider cursor-pointer transition-colors"
+                >
+                  KIRIM PESANAN LEWAT WHATSAPP
+                </button>
+              </div>
+            )}
             <button
               type="submit"
               form="booking-form"

@@ -57,8 +57,8 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="id" className={`scroll-smooth ${outfit.variable} ${jakarta.variable} ${space.variable} ${work.variable}`}>
-      <body className="bg-sand text-slate-900 font-sans antialiased selection:bg-amber-500 selection:text-white">
+    <html lang="id" className={`scroll-smooth ${outfit.variable} ${jakarta.variable} ${space.variable} ${work.variable}`} suppressHydrationWarning>
+      <body className="bg-sand text-slate-900 font-sans antialiased selection:bg-amber-500 selection:text-white" suppressHydrationWarning>
         {children}
       </body>
     </html>

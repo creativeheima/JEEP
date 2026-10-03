@@ -50,6 +50,7 @@ import { GalleryItem, GalleryCategory } from '@/types/gallery';
 import { HeroSlide, MAX_HERO_SLIDES } from '@/types/heroSlide';
 import { TourPackage } from '@/types/package';
 import { isClientAuthenticated, clearClientSession } from '@/lib/adminAuth';
+import MediaInput from '@/components/admin/MediaInput';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -378,7 +379,7 @@ export default function AdminDashboardPage() {
   const handleAddGalleryItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!galleryTitle || !galleryMediaUrl) {
-      alert('Judul dan URL foto/media wajib diisi!');
+      alert('Judul dan foto/video wajib diisi (upload, link Drive, atau link URL)!');
       return;
     }
 
@@ -400,7 +401,7 @@ export default function AdminDashboardPage() {
 
       const json = await res.json();
       if (json.success) {
-        alert(galleryFormType === 'PHOTO' ? 'Foto berhasil ditambahkan ke galeri!' : 'Video Instagram berhasil ditautkan ke galeri!');
+        alert(galleryFormType === 'PHOTO' ? 'Foto berhasil ditambahkan ke galeri!' : 'Video berhasil ditambahkan ke galeri!');
         setGalleryTitle('');
         setGalleryMediaUrl('');
         setGalleryInstagramUrl('');
@@ -1918,7 +1919,7 @@ export default function AdminDashboardPage() {
                     }`}
                   >
                     <Instagram className="w-3.5 h-3.5" />
-                    <span>+ Video IG Reels</span>
+                    <span>+ Video</span>
                   </button>
                 </div>
               </div>
@@ -1957,16 +1958,15 @@ export default function AdminDashboardPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="font-space font-bold text-slate-700 block mb-1">
-                      URL Gambar / Thumbnail *
-                    </label>
-                    <input
-                      type="text"
+                    <MediaInput
+                      key={galleryFormType}
+                      label={galleryFormType === 'PHOTO' ? 'Foto' : 'Video'}
                       required
+                      kind={galleryFormType === 'PHOTO' ? 'image' : 'video'}
+                      folder="gallery"
                       value={galleryMediaUrl}
-                      onChange={(e) => setGalleryMediaUrl(e.target.value)}
-                      placeholder="/images/foto.png atau https://..."
-                      className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-800 font-mono focus:border-amber-500 outline-none"
+                      onChange={setGalleryMediaUrl}
+                      onThumbnail={(t) => !galleryThumbnailUrl && setGalleryThumbnailUrl(t)}
                     />
                   </div>
 
@@ -1983,6 +1983,19 @@ export default function AdminDashboardPage() {
                     />
                   </div>
                 </div>
+
+                {galleryFormType === 'INSTAGRAM_VIDEO' && (
+                  <div className="max-w-md">
+                    <MediaInput
+                      label="Cover / Thumbnail Video (opsional)"
+                      kind="image"
+                      folder="gallery"
+                      compact
+                      value={galleryThumbnailUrl}
+                      onChange={setGalleryThumbnailUrl}
+                    />
+                  </div>
+                )}
 
                 <div>
                   <button
@@ -2123,17 +2136,7 @@ export default function AdminDashboardPage() {
                 <form onSubmit={handleAddHeroSlide} className="space-y-4 text-xs font-work">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="font-space font-bold text-slate-700 block mb-1">
-                        URL / Path Gambar Foto *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={newSlideImage}
-                        onChange={(e) => setNewSlideImage(e.target.value)}
-                        placeholder="Contoh: /images/nama_foto.png atau link https://..."
-                        className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-800 font-mono focus:border-amber-500 outline-none"
-                      />
+                      <MediaInput label="Foto Slide" required kind="image" folder="hero" value={newSlideImage} onChange={setNewSlideImage} />
                     </div>
 
                     <div>
@@ -2795,15 +2798,13 @@ export default function AdminDashboardPage() {
 
             <form onSubmit={handleSaveEditSlide} className="space-y-4 text-xs font-work">
               <div>
-                <label className="font-space font-bold text-slate-700 block mb-1">
-                  URL / Path Gambar Foto *
-                </label>
-                <input
-                  type="text"
+                <MediaInput
+                  label="Foto Slide"
                   required
+                  kind="image"
+                  folder="hero"
                   value={editingSlide.imageUrl}
-                  onChange={(e) => setEditingSlide({ ...editingSlide, imageUrl: e.target.value })}
-                  className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-800 font-mono focus:border-amber-500 outline-none"
+                  onChange={(url) => setEditingSlide({ ...editingSlide, imageUrl: url })}
                 />
               </div>
 
@@ -3177,17 +3178,7 @@ function CollageAdminPanel({
 
                     {/* Input URL */}
                     <div className="space-y-1.5">
-                      <label className="block font-space font-bold text-[10px] text-slate-600 uppercase tracking-wider">
-                        URL / Path Foto *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={image1}
-                        onChange={e => setImage1(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 font-mono text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400 focus:bg-white transition-all"
-                        placeholder="/images/nama-foto.png"
-                      />
+                      <MediaInput label="Foto Utama" required kind="image" folder="collage" compact value={image1} onChange={setImage1} />
                     </div>
 
                     {/* Input Caption */}
@@ -3237,16 +3228,7 @@ function CollageAdminPanel({
 
                     {/* Input URL */}
                     <div className="space-y-1.5">
-                      <label className="block font-space font-bold text-[10px] text-slate-600 uppercase tracking-wider">
-                        URL / Path Foto
-                      </label>
-                      <input
-                        type="text"
-                        value={image2}
-                        onChange={e => setImage2(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 font-mono text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400 focus:bg-white transition-all"
-                        placeholder="/images/nama-foto.png (opsional)"
-                      />
+                      <MediaInput label="Foto Kedua (opsional)" kind="image" folder="collage" compact value={image2} onChange={setImage2} />
                     </div>
 
                     {/* Input Caption */}
@@ -3827,31 +3809,8 @@ function PackagesAdminPanel({ packages, onRefresh }: PackagesAdminPanelProps) {
                 </div>
               </div>
 
-              {/* Section 3: Foto Banner URL */}
-              <div className="space-y-1.5">
-                <label className="block font-space font-bold text-[11px] text-slate-700 uppercase">
-                  URL / Path Foto Banner Paket
-                </label>
-                <div className="flex gap-3 items-center">
-                  <input
-                    type="text"
-                    value={image}
-                    onChange={(e) => setImage(e.target.value)}
-                    placeholder="/images/img_1_156_paket_short_merapi_jeep.png"
-                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 font-mono text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400 focus:bg-white"
-                  />
-                  {image && (
-                    <div className="w-14 h-10 rounded-lg overflow-hidden border border-slate-200 shrink-0 bg-slate-900">
-                      <img
-                        src={image}
-                        alt="Preview"
-                        className="w-full h-full object-cover"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
+              {/* Section 3: Foto Banner Paket */}
+              <MediaInput label="Foto Banner Paket" kind="image" folder="packages" value={image} onChange={setImage} />
 
               {/* Section 4: Best Seller / Highlight Toggle */}
               <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3">

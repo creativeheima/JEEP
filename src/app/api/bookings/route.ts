@@ -38,10 +38,20 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    let body: Record<string, any>;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ success: false, error: 'Format data tidak valid' }, { status: 400 });
+    }
 
-    if (!body.customerName || !body.customerPhone) {
+    const name = String(body.customerName || '').trim();
+    const phoneDigits = String(body.customerPhone || '').replace(/[^\d+]/g, '');
+    if (!name || !phoneDigits) {
       return NextResponse.json({ success: false, error: 'Nama dan Nomor WhatsApp wajib diisi' }, { status: 400 });
+    }
+    if (phoneDigits.replace('+', '').length < 9) {
+      return NextResponse.json({ success: false, error: 'Nomor WhatsApp tidak valid' }, { status: 400 });
     }
 
     const pax = Number(body.paxCount) || 4;
@@ -62,8 +72,8 @@ export async function POST(request: Request) {
     const newBooking: Booking = {
       id: 'bkg-' + Date.now(),
       bookingCode: generateBookingCode(),
-      customerName: body.customerName.trim(),
-      customerPhone: body.customerPhone.trim(),
+      customerName: name,
+      customerPhone: phoneDigits,
       packageName: body.packageName || 'Paket Medium',
       tourDate: body.tourDate || new Date().toISOString().split('T')[0],
       tourTime: body.tourTime || '09:00 WIB',
@@ -89,6 +99,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, data: savedBooking }, { status: 201 });
   } catch (error) {
     console.error('Error creating booking:', error);
-    return NextResponse.json({ success: false, error: 'Failed to create booking' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Gagal menyimpan reservasi';
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
