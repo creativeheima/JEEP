@@ -53,7 +53,7 @@ export default function Navbar({ onOpenBooking, onOpenCheckTicket }: NavbarProps
     <header
       className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-500 border-b ${
         isScrolled
-          ? 'bg-white/75 backdrop-blur-xl backdrop-saturate-150 border-slate-200/60 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.18)] py-3'
+          ? 'bg-white/95 md:bg-white/75 backdrop-blur-xl backdrop-saturate-150 border-slate-200/60 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.18)] py-3'
           : 'bg-white border-slate-200/80 py-3.5 sm:py-4'
       }`}
     >

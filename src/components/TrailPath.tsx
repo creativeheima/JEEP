@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { useScrollFrame } from '@/components/motion';
+import { useScrollFrame, isLiteMotion } from '@/components/motion';
 
 const WAYPOINTS = ['tentang', 'paket-wisata', 'sensasi', 'destinasi', 'pengalaman', 'fasilitas', 'galeri', 'ulasan', 'faq', 'kontak'];
 
@@ -16,6 +16,9 @@ export default function TrailPath() {
   const dotRef = useRef<SVGGElement>(null);
   const [geo, setGeo] = useState<{ d: string; w: number; h: number; start: number; end: number; glows: [number, number][] } | null>(null);
   const lenRef = useRef(0);
+  const lastP = useRef(-1);
+  const [lite, setLite] = useState(false);
+  useEffect(() => setLite(isLiteMotion()), []);
 
   // Bangun path dari posisi tiap section
   useEffect(() => {
@@ -72,22 +75,25 @@ export default function TrailPath() {
     if (progressRef.current) {
       lenRef.current = progressRef.current.getTotalLength();
       progressRef.current.style.strokeDasharray = `${lenRef.current}`;
-      progressRef.current.style.strokeDashoffset = `${lenRef.current}`;
+      // Di HP: jejak langsung tampil penuh (tanpa animasi) agar SVG panjang tidak digambar ulang tiap frame
+      progressRef.current.style.strokeDashoffset = lite ? '0' : `${lenRef.current}`;
     }
-  }, [geo]);
+  }, [geo, lite]);
 
   useScrollFrame(() => {
     if (!geo || !progressRef.current) return;
     const len = lenRef.current;
     const pos = window.scrollY + window.innerHeight * 0.55;
     const p = Math.min(1, Math.max(0, (pos - geo.start) / (geo.end - geo.start)));
+    if (Math.abs(p - lastP.current) < 0.0015) return;
+    lastP.current = p;
     progressRef.current.style.strokeDashoffset = `${len * (1 - p)}`;
     if (dotRef.current) {
       const pt = progressRef.current.getPointAtLength(len * p);
       dotRef.current.setAttribute('transform', `translate(${pt.x} ${pt.y})`);
       dotRef.current.style.opacity = p > 0.001 && p < 0.999 ? '1' : '0';
     }
-  });
+  }, !lite);
 
   return (
     <div ref={wrapRef} className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
@@ -118,7 +124,7 @@ export default function TrailPath() {
           {/* Jejak dasar putus-putus */}
           <path d={geo.d} fill="none" stroke="rgba(217, 119, 6, 0.28)" strokeWidth={2} strokeLinecap="round" />
           {/* Jejak terisi sesuai scroll */}
-          <path ref={progressRef} d={geo.d} fill="none" stroke="url(#trail-grad)" strokeWidth={3} strokeLinecap="round" opacity={0.9} />
+          <path ref={progressRef} d={geo.d} fill="none" stroke="url(#trail-grad)" strokeWidth={lite ? 2 : 3} strokeLinecap="round" opacity={lite ? 0.35 : 0.9} />
           {/* Penanda posisi */}
           <g ref={dotRef} style={{ opacity: 0, transition: 'opacity .3s' }}>
             <circle r={14} fill="rgba(245, 158, 11, 0.15)" />

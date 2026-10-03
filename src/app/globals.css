@@ -57,7 +57,6 @@ body {
     transform 1s cubic-bezier(0.16, 1, 0.3, 1),
     filter 0.9s cubic-bezier(0.16, 1, 0.3, 1);
   transition-delay: var(--reveal-delay, 0ms);
-  will-change: opacity, transform;
 }
 .reveal-up    { transform: translate3d(0, 48px, 0); }
 .reveal-down  { transform: translate3d(0, -32px, 0); }
@@ -349,4 +348,33 @@ body {
 }
 @media (prefers-reduced-motion: reduce) {
   .feed-zoom, .heart-burst, .heart-pop, .swipe-hint { animation: none !important; }
+}
+
+/* =========================================================
+   MODE HEMAT ANIMASI DI HP — agar scroll tetap mulus di Android
+   ========================================================= */
+@media (max-width: 767px), (hover: none) and (pointer: coarse) {
+  /* Efek berat yang memaksa browser menggambar ulang seluruh layar */
+  .grain { display: none; }
+  .page-canvas .aurora { display: none; }
+
+  /* backdrop-filter (blur kaca) sangat berat di GPU Android: ganti latar solid */
+  *, *::before, *::after {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  .glass-card { background: rgba(255, 255, 255, 0.92); }
+
+  /* Animasi reveal: tanpa blur, gerakan lebih pendek & cepat */
+  .reveal { transition-duration: 0.6s, 0.7s, 0s; }
+  .reveal-blur { filter: none; transform: translate3d(0, 20px, 0); }
+  .reveal-up { transform: translate3d(0, 28px, 0); }
+  .reveal-left { transform: translate3d(-28px, 0, 0); }
+  .reveal-right { transform: translate3d(28px, 0, 0); }
+
+  /* Animasi terus-menerus yang tidak perlu di HP */
+  .float-slow, .float-medium { animation: none; }
+  .animate-ping { animation: none; opacity: 0; }
+  .card-shine::after { display: none; }
+  .card-lift:hover { transform: none; box-shadow: none; }
 }

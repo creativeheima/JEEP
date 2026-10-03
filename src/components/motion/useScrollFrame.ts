@@ -29,6 +29,12 @@ export function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
+/** true di HP/tablet (layar kecil atau perangkat sentuh) — dipakai untuk mode hemat animasi */
+export function isLiteMotion() {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia('(max-width: 767px), (hover: none) and (pointer: coarse)').matches;
+}
+
 export function useScrollFrame(callback: FrameCallback, enabled = true) {
   const cbRef = useRef(callback);
 

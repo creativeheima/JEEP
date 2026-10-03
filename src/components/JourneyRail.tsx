@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useScrollFrame } from '@/components/motion';
 
 const CHAPTERS = [
@@ -24,6 +24,16 @@ export default function JourneyRail() {
   const [active, setActive] = useState(-1);
   const fillRef = useRef<HTMLDivElement>(null);
   const railRef = useRef<HTMLDivElement>(null);
+  const [wide, setWide] = useState(false);
+
+  // Rel hanya tampil di layar lebar — jangan hitung apa pun di HP
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1400px)');
+    const update = () => setWide(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
 
   useScrollFrame(() => {
     const mid = window.scrollY + window.innerHeight * 0.45;
@@ -52,7 +62,7 @@ export default function JourneyRail() {
       railRef.current.style.opacity = visible ? '1' : '0';
       railRef.current.style.transform = visible ? 'translate3d(0,-50%,0)' : 'translate3d(-16px,-50%,0)';
     }
-  });
+  }, wide);
 
   return (
     <nav

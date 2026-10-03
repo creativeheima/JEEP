@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useRef } from 'react';
-import { useScrollFrame } from './useScrollFrame';
+import React, { useEffect, useRef, useState } from 'react';
+import { useScrollFrame, isLiteMotion } from './useScrollFrame';
 
 interface ParallaxProps {
   children: React.ReactNode;
@@ -13,6 +13,8 @@ interface ParallaxProps {
   className?: string;
   /** Kelas untuk lapisan dalam (yang digeser). */
   innerClassName?: string;
+  /** Tetap aktif di HP (default: dimatikan di HP agar scroll mulus) */
+  mobile?: boolean;
 }
 
 export default function Parallax({
@@ -21,9 +23,16 @@ export default function Parallax({
   scale = 1,
   className = '',
   innerClassName = '',
+  mobile = false,
 }: ParallaxProps) {
   const outerRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
+  const [enabled, setEnabled] = useState(false);
+  const lastY = useRef<number | null>(null);
+
+  useEffect(() => {
+    setEnabled(mobile || !isLiteMotion());
+  }, [mobile]);
 
   useScrollFrame(() => {
     const outer = outerRef.current;
@@ -36,16 +45,18 @@ export default function Parallax({
     if (rect.bottom < -vh * 0.5 || rect.top > vh * 1.5) return;
 
     const distanceFromCenter = rect.top + rect.height / 2 - vh / 2;
-    const y = -distanceFromCenter * speed;
-    inner.style.transform = `translate3d(0, ${y.toFixed(1)}px, 0) scale(${scale})`;
-  });
+    const y = Math.round(-distanceFromCenter * speed * 2) / 2;
+    if (y === lastY.current) return; // hindari tulis style yang sama
+    lastY.current = y;
+    inner.style.transform = `translate3d(0, ${y}px, 0) scale(${scale})`;
+  }, enabled);
 
   return (
     <div ref={outerRef} className={className}>
       <div
         ref={innerRef}
         className={innerClassName}
-        style={{ transform: `scale(${scale})`, willChange: 'transform' }}
+        style={{ transform: `scale(${scale})`, willChange: enabled ? 'transform' : undefined }}
       >
         {children}
       </div>
