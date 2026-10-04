@@ -237,3 +237,17 @@ create table if not exists public.site_settings (
 );
 alter table public.site_settings enable row level security;
 revoke all on table public.site_settings from anon, authenticated;
+-- WAJIB: server memakai service_role key untuk baca/tulis site_settings
+grant all on table public.site_settings to service_role;
+
+-- =================================================================
+-- 12. GRANT SERVICE_ROLE KE SEMUA TABEL YANG DIPROTEKSI
+--     Wajib dijalankan agar server bisa baca/tulis via SUPABASE_SERVICE_ROLE_KEY.
+--     RLS tetap aktif, tapi service_role bypass RLS secara default.
+-- =================================================================
+grant all on table public.bookings          to service_role;
+grant all on table public.gallery_items     to service_role;
+grant all on table public.hero_slides       to service_role;
+grant all on table public.admin_accounts    to service_role;
+grant all on table public.site_settings     to service_role;
+grant all on all sequences in schema public to service_role;
