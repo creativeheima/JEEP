@@ -12,7 +12,7 @@ const INITIAL_GALLERY: GalleryItem[] = [
     type: 'PHOTO',
     title: 'Jeep Traversing Off-Road Track',
     category: 'JEEP ACTION',
-    mediaUrl: '/images/img_1_577_jeep_traversing_off-road_track.png',
+    mediaUrl: '/images/img_1_577_jeep_traversing_off-road_track.webp',
     createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
   },
   {
@@ -20,7 +20,7 @@ const INITIAL_GALLERY: GalleryItem[] = [
     type: 'PHOTO',
     title: 'Wisatawan Bersorak di Jeep',
     category: 'WISATAWAN',
-    mediaUrl: '/images/img_1_579_wisatawan_bersorak_di_jeep.png',
+    mediaUrl: '/images/img_1_579_wisatawan_bersorak_di_jeep.webp',
     createdAt: new Date(Date.now() - 86400000 * 4).toISOString(),
   },
   {
@@ -30,7 +30,7 @@ const INITIAL_GALLERY: GalleryItem[] = [
     category: 'VIDEO REELS',
     mediaUrl: 'https://www.instagram.com/reel/C-xyz123/',
     instagramUrl: 'https://www.instagram.com/reel/C-xyz123/',
-    thumbnailUrl: '/images/img_1_581_manuver_air_kali_kuning.png',
+    thumbnailUrl: '/images/img_1_581_manuver_air_kali_kuning.webp',
     caption: 'Sensasi cipratan air ekstrem bersama tim driver profesional! 🔥 #MerapiJeep #LavaTour',
     createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
   },
@@ -39,7 +39,7 @@ const INITIAL_GALLERY: GalleryItem[] = [
     type: 'PHOTO',
     title: 'Manuver Air Kali Kuning (Splash)',
     category: 'JEEP ACTION',
-    mediaUrl: '/images/img_1_581_manuver_air_kali_kuning.png',
+    mediaUrl: '/images/img_1_581_manuver_air_kali_kuning.webp',
     createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
   },
   {
@@ -49,7 +49,7 @@ const INITIAL_GALLERY: GalleryItem[] = [
     category: 'VIDEO REELS',
     mediaUrl: 'https://www.instagram.com/reel/C-sunrise456/',
     instagramUrl: 'https://www.instagram.com/reel/C-sunrise456/',
-    thumbnailUrl: '/images/img_1_583_panorama_merapi_pagi_cerah.png',
+    thumbnailUrl: '/images/img_1_583_panorama_merapi_pagi_cerah.webp',
     caption: 'Matahari terbit jam 05.00 pagi dengan kabut tipis di Bunker Kaliadem. Wajib coba Paket Sunrise!',
     createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
   },
@@ -58,7 +58,7 @@ const INITIAL_GALLERY: GalleryItem[] = [
     type: 'PHOTO',
     title: 'Panorama Merapi Pagi Cerah',
     category: 'DESTINASI',
-    mediaUrl: '/images/img_1_583_panorama_merapi_pagi_cerah.png',
+    mediaUrl: '/images/img_1_583_panorama_merapi_pagi_cerah.webp',
     createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
   },
   {
@@ -66,7 +66,7 @@ const INITIAL_GALLERY: GalleryItem[] = [
     type: 'PHOTO',
     title: 'Spot Foto Batu Alien Merapi',
     category: 'DESTINASI',
-    mediaUrl: '/images/img_1_585_batu_alien_merapi.png',
+    mediaUrl: '/images/img_1_585_batu_alien_merapi.webp',
     createdAt: new Date(Date.now() - 86400000 * 1).toISOString(),
   },
   {
@@ -74,7 +74,7 @@ const INITIAL_GALLERY: GalleryItem[] = [
     type: 'PHOTO',
     title: 'Corporate Outing & Gathering Jeep',
     category: 'WISATAWAN',
-    mediaUrl: '/images/img_1_587_corporate_outing_jeep.png',
+    mediaUrl: '/images/img_1_587_corporate_outing_jeep.webp',
     createdAt: new Date().toISOString(),
   },
 ];

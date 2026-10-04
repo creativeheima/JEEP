@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -52,8 +52,9 @@ import { Booking } from '@/types/booking';
 import { GalleryItem, GalleryCategory } from '@/types/gallery';
 import { HeroSlide, MAX_HERO_SLIDES } from '@/types/heroSlide';
 import { TourPackage } from '@/types/package';
-import { isClientAuthenticated, clearClientSession, getClientUser } from '@/lib/adminAuth';
+import { isClientAuthenticated, clearClientSession, getClientUser, verifyServerSession } from '@/lib/adminAuth';
 import MediaInput from '@/components/admin/MediaInput';
+import ContactSettingsPanel from '@/components/admin/ContactSettingsPanel';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -71,7 +72,7 @@ export default function AdminDashboardPage() {
   const [pendingSearch, setPendingSearch] = useState('');
   
   // Navigation active tab: 'dashboard' is the default overview
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'pending' | 'approved' | 'settled' | 'gallery' | 'hero' | 'collage' | 'packages'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'pending' | 'approved' | 'settled' | 'gallery' | 'hero' | 'collage' | 'packages' | 'contact'>('dashboard');
 
   // Admin Packages CRUD states
   const [adminPackages, setAdminPackages] = useState<TourPackage[]>([]);
@@ -145,23 +146,64 @@ export default function AdminDashboardPage() {
     setIsAuthenticated(auth);
     if (!auth) {
       router.push('/admin/login');
-    } else {
-      setCurrentUser(getClientUser());
+      return;
     }
+    setCurrentUser(getClientUser());
+    // Cek ulang ke server: bila sesi sudah habis, kembali ke halaman login
+    verifyServerSession().then((u) => {
+      if (!u) {
+        setIsAuthenticated(false);
+        router.push('/admin/login');
+      }
+    });
   }, [router]);
 
-  const fetchBookings = async () => {
-    setLoading(true);
+  const [bookingsError, setBookingsError] = useState<string | null>(null);
+  const [newBookingNotice, setNewBookingNotice] = useState<string | null>(null);
+  const knownBookingIds = useRef<Set<string> | null>(null);
+
+  /** silent = refresh otomatis di latar belakang (tanpa spinner) */
+  const fetchBookings = async (silent: boolean | unknown = false) => {
+    const isSilent = silent === true;
+    if (!isSilent) setLoading(true);
     try {
-      const res = await fetch(`/api/bookings?search=${encodeURIComponent(search)}`);
-      const json = await res.json();
-      if (json.success) {
-        setBookings(json.data);
+      const res = await fetch(`/api/bookings?search=${encodeURIComponent(search)}`, { cache: 'no-store' });
+      if (res.status === 401 || res.status === 403) {
+        setBookingsError('Sesi login berakhir. Silakan login ulang.');
+        setIsAuthenticated(false);
+        router.push('/admin/login');
+        return;
+      }
+      let json: { success?: boolean; data?: Booking[]; error?: string } = {};
+      try {
+        json = await res.json();
+      } catch {
+        json = { success: false, error: `Server error (${res.status})` };
+      }
+      if (json.success && Array.isArray(json.data)) {
+        const list = json.data;
+        // Deteksi booking baru yang masuk sejak pengambilan sebelumnya
+        if (knownBookingIds.current && !search) {
+          const fresh = list.filter((b) => !knownBookingIds.current!.has(b.id));
+          if (fresh.length) {
+            setNewBookingNotice(
+              fresh.length === 1
+                ? `Booking baru masuk: ${fresh[0].customerName} (${fresh[0].bookingCode})`
+                : `${fresh.length} booking baru masuk`
+            );
+          }
+        }
+        if (!search) knownBookingIds.current = new Set(list.map((b) => b.id));
+        setBookings(list);
+        setBookingsError(null);
+      } else {
+        setBookingsError(json.error || `Gagal memuat booking (${res.status})`);
       }
     } catch (err) {
       console.error(err);
+      setBookingsError('Tidak bisa terhubung ke server. Periksa koneksi lalu klik refresh.');
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   };
 
@@ -183,6 +225,29 @@ export default function AdminDashboardPage() {
       fetchPackages();
     }
   }, [search, isAuthenticated]);
+
+  // Refresh otomatis: tiap 20 detik + saat tab admin kembali dibuka, supaya booking customer langsung terlihat
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const tick = () => {
+      if (document.visibilityState === 'visible') fetchBookings(true);
+    };
+    const id = window.setInterval(tick, 20000);
+    document.addEventListener('visibilitychange', tick);
+    window.addEventListener('focus', tick);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', tick);
+      window.removeEventListener('focus', tick);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, isAuthenticated]);
+
+  useEffect(() => {
+    if (!newBookingNotice) return;
+    const t = window.setTimeout(() => setNewBookingNotice(null), 8000);
+    return () => window.clearTimeout(t);
+  }, [newBookingNotice]);
 
   // Filter bookings by status & payment status
   const pendingBookings = bookings.filter((b) => b.approvalStatus === 'PENDING');
@@ -821,19 +886,19 @@ export default function AdminDashboardPage() {
               type="button"
               onClick={() => setIsSettingsOpen(!isSettingsOpen)}
               className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-space text-xs font-semibold transition-all cursor-pointer text-left ${
-                activeTab === 'gallery' || activeTab === 'hero' || activeTab === 'collage' || activeTab === 'packages'
+                activeTab === 'gallery' || activeTab === 'hero' || activeTab === 'collage' || activeTab === 'packages' || activeTab === 'contact'
                   ? 'bg-amber-50 text-amber-900 font-bold border border-amber-200/80 shadow-xs'
                   : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
               <div className="flex items-center gap-3 min-w-0">
-                <div className={`p-1.5 rounded-lg ${activeTab === 'gallery' || activeTab === 'hero' || activeTab === 'collage' || activeTab === 'packages' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}`}>
+                <div className={`p-1.5 rounded-lg ${activeTab === 'gallery' || activeTab === 'hero' || activeTab === 'collage' || activeTab === 'packages' || activeTab === 'contact' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}`}>
                   <Settings className="w-4 h-4 shrink-0" />
                 </div>
                 <div className="truncate">
                   <span className="block truncate font-bold">Settingan Website</span>
                   <span className="block text-[10px] truncate text-slate-400">
-                    Galeri & Slideshow
+                    Galeri, Paket & Kontak WA
                   </span>
                 </div>
               </div>
@@ -922,6 +987,22 @@ export default function AdminDashboardPage() {
                     {adminPackages.length}
                   </span>
                 </button>
+
+                {/* Submenu 5: Kontak & WhatsApp */}
+                <button
+                  type="button"
+                  onClick={() => handleSelectTab('contact')}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg font-space text-xs transition-all cursor-pointer text-left ${
+                    activeTab === 'contact'
+                      ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <Phone className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">Kontak & WhatsApp</span>
+                  </div>
+                </button>
               </div>
             )}
 
@@ -999,6 +1080,19 @@ export default function AdminDashboardPage() {
       {/* ============================================================== */}
       <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full">
         
+        {newBookingNotice && (
+          <div className="fixed top-4 right-4 z-[60] max-w-sm rounded-2xl bg-emerald-600 text-white px-4 py-3 shadow-xl text-sm font-semibold flex items-start gap-3">
+            <span className="flex-1">🔔 {newBookingNotice}</span>
+            <button onClick={() => setNewBookingNotice(null)} className="opacity-80 hover:opacity-100" aria-label="Tutup">✕</button>
+          </div>
+        )}
+        {bookingsError && (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 px-4 py-3 text-sm flex flex-wrap items-center gap-3">
+            <span className="flex-1"><strong>Data booking gagal dimuat.</strong> {bookingsError}</span>
+            <button onClick={() => fetchBookings()} className="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-bold">Coba lagi</button>
+          </div>
+        )}
+
         {/* Top Header Bar for Desktop: Breadcrumb & Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200/80">
           <div>
@@ -1014,6 +1108,7 @@ export default function AdminDashboardPage() {
                 {activeTab === 'hero' && 'Slideshow Beranda'}
                 {activeTab === 'collage' && 'Konten Intro (Beranda)'}
                 {activeTab === 'packages' && 'Paket Wisata'}
+                {activeTab === 'contact' && 'Kontak & WhatsApp'}
               </span>
             </div>
             <h1 className="font-outfit font-black text-2xl sm:text-3xl text-slate-900 tracking-tight">
@@ -1025,6 +1120,7 @@ export default function AdminDashboardPage() {
               {activeTab === 'hero' && 'Kelola Foto Slideshow Beranda'}
               {activeTab === 'collage' && 'Kelola Teks & Gambar Seksi Intro'}
               {activeTab === 'packages' && 'Kelola Paket Wisata'}
+              {activeTab === 'contact' && 'Pengaturan Nomor WhatsApp Admin'}
             </h1>
           </div>
 
@@ -2952,6 +3048,8 @@ export default function AdminDashboardPage() {
         {/* ============================================================== */}
         {/* TAB 6: KELOLA KONTEN INTRO (COLLAGE SECTION) */}
         {/* ============================================================== */}
+        {activeTab === 'contact' && <ContactSettingsPanel />}
+
         {activeTab === 'collage' && (
           <CollageAdminPanel
             headline={collageHeadline}
@@ -3192,7 +3290,7 @@ function CollageAdminPanel({
                           src={image1}
                           alt="Preview Foto 1"
                           className="w-full h-full object-cover"
-                          onError={e => { (e.target as HTMLImageElement).src = '/images/img_1_53_jeep_cruising_through_volcanic_off-road_track_mount_merapi.png'; }}
+                          onError={e => { (e.target as HTMLImageElement).src = '/images/img_1_53_jeep_cruising_through_volcanic_off-road_track_mount_merapi.webp'; }}
                         />
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-2">
@@ -3480,7 +3578,7 @@ function PackagesAdminPanel({ packages, onRefresh }: PackagesAdminPanelProps) {
     setDuration('2 - 2.5 Jam');
     setBadge('RUTE MERAPI');
     setSubBadge('OFFROAD TOUR');
-    setImage('/images/img_1_156_paket_short_merapi_jeep.png');
+    setImage('/images/img_1_156_paket_short_merapi_jeep.webp');
     setColor('slate');
     setIsFeatured(false);
     setFeatureText('');
@@ -3623,7 +3721,7 @@ function PackagesAdminPanel({ packages, onRefresh }: PackagesAdminPanelProps) {
                     alt={pkg.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = '/images/img_1_156_paket_short_merapi_jeep.png';
+                      (e.target as HTMLImageElement).src = '/images/img_1_156_paket_short_merapi_jeep.webp';
                     }}
                   />
                 ) : (

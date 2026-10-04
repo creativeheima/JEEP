@@ -138,6 +138,8 @@ export default function DatabaseSettingsTab({ currentUserRole }: DatabaseSetting
       if (json.success) {
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 4000);
+        // Hosting serverless: konfigurasi tidak tersimpan permanen → beri tahu superuser
+        if (json.persisted === false && json.message) setErrorMessage(json.message);
       } else {
         setErrorMessage(json.error || 'Gagal menyimpan konfigurasi');
       }

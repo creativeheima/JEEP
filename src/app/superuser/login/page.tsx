@@ -48,6 +48,9 @@ export default function SuperuserLoginPage() {
         }
 
         setClientSession(data.user);
+        if (data.weakPassword) {
+          alert('Peringatan keamanan: password Anda masih bawaan/lemah. Segera ganti melalui menu Manajemen Akun (Superuser).');
+        }
         router.push('/superuser');
       } else {
         setError(data.error || 'Username atau password Superuser tidak sesuai.');
@@ -59,10 +62,6 @@ export default function SuperuserLoginPage() {
     }
   };
 
-  const handleAutoFill = () => {
-    setUsername('superuser');
-    setPassword('admin123');
-  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center p-4 relative font-sans antialiased selection:bg-amber-500 selection:text-slate-950">
@@ -129,9 +128,6 @@ export default function SuperuserLoginPage() {
                 <label className="font-space font-bold text-slate-300 uppercase tracking-wide">
                   Kata Sandi Master
                 </label>
-                <span className="text-[11px] text-amber-500 font-work">
-                  Default: admin123
-                </span>
               </div>
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
@@ -155,14 +151,6 @@ export default function SuperuserLoginPage() {
 
             {/* Quick Auto-fill */}
             <div className="pt-1 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={handleAutoFill}
-                className="inline-flex items-center gap-1.5 text-[11px] font-space font-bold text-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
-              >
-                <KeyRound className="w-3.5 h-3.5" />
-                <span>Auto-fill Superuser</span>
-              </button>
               <div className="flex items-center gap-1 text-[11px] text-slate-500">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
                 <span>Enkripsi Level 3</span>

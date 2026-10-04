@@ -28,7 +28,7 @@ export default function CinematicStatsSection() {
         <Reveal variant="zoom">
           <div className="relative overflow-hidden rounded-[28px] sm:rounded-[40px] bg-slate-950 shadow-2xl shadow-slate-950/25 isolate">
             <ParallaxImage
-              src="/images/img_1_312_mount_merapi_volcano_landscape_scenery.png"
+              src="/images/img_1_312_mount_merapi_volcano_landscape_scenery.webp"
               alt="Jeep lava tour melintasi lereng Gunung Merapi, Yogyakarta"
               speed={0.15}
               sizes="(max-width: 1152px) 100vw, 1152px"

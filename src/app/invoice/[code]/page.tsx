@@ -146,7 +146,7 @@ export default function InvoicePage() {
           <div className="bg-[#090e1c] px-6 py-3.5 flex items-center justify-between relative overflow-hidden">
             <div className="absolute right-0 top-0 w-56 h-full bg-amber-500/10 blur-2xl rounded-full pointer-events-none" />
             <div className="flex items-center gap-3 relative z-10">
-              <Image src="/images/logo.png" alt="Merapi Jeep 4x4" width={2171} height={724} className="h-8 w-auto object-contain" />
+              <Image src="/images/logo.webp" alt="Merapi Jeep 4x4" width={2171} height={724} className="h-8 w-auto object-contain" />
               <div className="border-l border-slate-700 pl-3">
                 <p className="font-space text-[9px] text-amber-400 font-bold tracking-widest uppercase">
                   {isPending ? 'Formulir Reservasi Wisata' : 'E-Tiket & Invoice Resmi'}

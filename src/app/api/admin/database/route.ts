@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getDbConfig, saveDbConfig, resetDbConfigCache } from '@/lib/dbConfig';
+import { getDbConfig, getMaskedDbConfig, saveDbConfig, resetDbConfigCache, unmaskSecret, wasLastSavePersisted, isServerlessHosting } from '@/lib/dbConfig';
+import { requireSession } from '@/lib/apiAuth';
 import { testSupabaseConnection, resetSupabaseCache } from '@/lib/supabase';
 import { testMySqlConnection, initMySqlSchema } from '@/lib/mysql';
 
@@ -66,6 +67,24 @@ CREATE TABLE IF NOT EXISTS tour_packages (
   order_index INT NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS admin_accounts (
+  id VARCHAR(100) PRIMARY KEY,
+  username VARCHAR(64) UNIQUE NOT NULL,
+  name VARCHAR(150) NOT NULL DEFAULT '',
+  email VARCHAR(255) UNIQUE NOT NULL,
+  role VARCHAR(20) NOT NULL DEFAULT 'ADMIN',
+  password_hash VARCHAR(255),
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  last_login DATETIME NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS site_settings (
+  \`key\` VARCHAR(50) PRIMARY KEY,
+  value JSON NOT NULL,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS collage_content (
   id VARCHAR(50) PRIMARY KEY,
   headline VARCHAR(255) NOT NULL,
@@ -77,104 +96,106 @@ CREATE TABLE IF NOT EXISTS collage_content (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`;
 
-// GET: Ambil konfigurasi database saat ini
-export async function GET() {
+// GET: Ambil konfigurasi database saat ini (kunci rahasia DISENSOR — tidak pernah dikirim utuh ke browser)
+export async function GET(request: Request) {
+  const auth = await requireSession(request, 'SUPERUSER');
+  if (auth instanceof NextResponse) return auth;
   try {
-    const config = getDbConfig();
-    return NextResponse.json({
-      success: true,
-      data: {
-        activeMode: config.activeMode,
-        supabase: {
-          url: config.supabase.url,
-          anonKey: config.supabase.anonKey,
-          serviceRoleKey: config.supabase.serviceRoleKey,
-        },
-        mysql: {
-          host: config.mysql.host,
-          port: config.mysql.port,
-          database: config.mysql.database,
-          user: config.mysql.user,
-          password: config.mysql.password,
-          ssl: config.mysql.ssl,
-        },
-        updatedAt: config.updatedAt,
-        updatedBy: config.updatedBy,
-      },
-    });
+    const config = getMaskedDbConfig();
+    return NextResponse.json({ success: true, data: config, serverless: isServerlessHosting() });
   } catch (error: any) {
     console.error('Error getting DB config:', error);
-    return NextResponse.json(
-      { success: false, error: 'Gagal memuat konfigurasi database' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Gagal memuat konfigurasi database' }, { status: 500 });
   }
+}
+
+/** Gabungkan input UI dengan nilai tersimpan: field rahasia yang masih tersensor tidak menimpa nilai asli. */
+function mergeSecrets(body: any) {
+  const current = getDbConfig();
+  const sb = body?.supabase;
+  const my = body?.mysql;
+  return {
+    supabase: sb
+      ? {
+          url: typeof sb.url === 'string' ? sb.url.trim() : current.supabase.url,
+          anonKey: typeof sb.anonKey === 'string' ? sb.anonKey.trim() : current.supabase.anonKey,
+          serviceRoleKey: unmaskSecret(sb.serviceRoleKey, current.supabase.serviceRoleKey).trim(),
+        }
+      : undefined,
+    mysql: my
+      ? {
+          host: String(my.host ?? current.mysql.host),
+          port: Number(my.port) || current.mysql.port,
+          database: String(my.database ?? current.mysql.database),
+          user: String(my.user ?? current.mysql.user),
+          password: unmaskSecret(my.password, current.mysql.password),
+          ssl: Boolean(my.ssl),
+        }
+      : undefined,
+  };
 }
 
 // POST: Simpan konfigurasi database
 export async function POST(request: Request) {
+  const auth = await requireSession(request, 'SUPERUSER');
+  if (auth instanceof NextResponse) return auth;
   try {
     const body = await request.json();
-    const { activeMode, supabase: sbConfig, mysql: myConfig, updatedBy } = body;
+    const activeMode = ['supabase', 'mysql', 'local'].includes(body.activeMode) ? body.activeMode : getDbConfig().activeMode;
+    const { supabase: sbConfig, mysql: myConfig } = mergeSecrets(body);
 
-    const ok = saveDbConfig(
-      {
-        activeMode,
-        supabase: sbConfig,
-        mysql: myConfig,
-      },
-      updatedBy || 'superuser'
-    );
-
+    const ok = saveDbConfig({ activeMode, supabase: sbConfig, mysql: myConfig }, auth.username);
     if (!ok) {
-      console.error('[DB Config] saveDbConfig returned false for activeMode:', activeMode);
-      return NextResponse.json(
-        { success: false, error: 'Gagal menyimpan konfigurasi database ke file server. Pastikan folder `data/` memiliki izin tulis (write permission) dan tidak dikunci oleh proses lain.' },
-        { status: 500 }
-      );
+      return NextResponse.json({ success: false, error: 'Gagal menyimpan konfigurasi database.' }, { status: 500 });
     }
 
-    // Reset runtime cache agar konfigurasi baru langsung berlaku
     resetDbConfigCache();
     resetSupabaseCache();
+    const persisted = wasLastSavePersisted();
 
     return NextResponse.json({
       success: true,
-      message: `Konfigurasi database berhasil disimpan! Provider aktif sekarang: ${activeMode.toUpperCase()}`,
-      data: getDbConfig(),
+      persisted,
+      message: persisted
+        ? `Konfigurasi database berhasil disimpan! Provider aktif sekarang: ${String(activeMode).toUpperCase()}`
+        : `Konfigurasi aktif sementara (${String(activeMode).toUpperCase()}), TAPI tidak tersimpan permanen karena hosting serverless (mis. Vercel). Simpan nilai ini di Environment Variables hosting agar tidak hilang.`,
+      data: getMaskedDbConfig(),
     });
   } catch (error: any) {
     console.error('Error saving DB config:', error);
-    return NextResponse.json(
-      { success: false, error: error.message || 'Gagal menyimpan konfigurasi' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message || 'Gagal menyimpan konfigurasi' }, { status: 500 });
   }
 }
 
 // PUT: Aksi Khusus (Test Supabase, Test MySQL, Inisialisasi MySQL, Ambil Skrip SQL)
 export async function PUT(request: Request) {
+  const auth = await requireSession(request, 'SUPERUSER');
+  if (auth instanceof NextResponse) return auth;
   try {
     const body = await request.json();
-    const { action, payload } = body;
+    const { action } = body;
+    // Payload dari UI bisa berisi kunci tersensor → ganti dengan nilai tersimpan
+    const merged = mergeSecrets({ supabase: action === 'test-supabase' ? body.payload : undefined, mysql: action !== 'test-supabase' ? body.payload : undefined });
+    const sbPayload = body.payload ? merged.supabase : undefined;
+    const myPayload = body.payload ? merged.mysql : undefined;
 
     if (action === 'test-supabase') {
       const currentConfig = getDbConfig();
-      const sbToTest = payload || currentConfig.supabase;
+      const sbToTest = sbPayload || currentConfig.supabase;
       const testResult = await testSupabaseConnection(sbToTest);
       return NextResponse.json({ success: testResult.success, result: testResult });
     }
 
     if (action === 'test-mysql') {
       const currentConfig = getDbConfig();
-      const myToTest = payload || currentConfig.mysql;
+      const myToTest = myPayload || currentConfig.mysql;
       const testResult = await testMySqlConnection(myToTest);
       return NextResponse.json({ success: testResult.success, result: testResult });
     }
 
     if (action === 'init-mysql-schema') {
       const currentConfig = getDbConfig();
-      const myToInit = payload || currentConfig.mysql;
+      const myToInit = myPayload || currentConfig.mysql;
       const initResult = await initMySqlSchema(myToInit);
       return NextResponse.json({ success: initResult.success, result: initResult });
     }

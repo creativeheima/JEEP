@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { Shield, MapPin, ArrowRight } from 'lucide-react';
 import { Reveal, Parallax, ParallaxImage } from '@/components/motion';
+import { optimizedSrc } from '@/lib/media';
 
 interface CollageSectionProps {
   onOpenBooking?: () => void;
@@ -21,9 +22,9 @@ interface CollageContent {
 const DEFAULT: CollageContent = {
   headline: 'Petualangan Dimulai di Sini, Menembus Jejak Vulkanik Legendaris',
   description: 'Menembus aroma belerang tipis, melintasi hamparan pasir hitam muntahan lahar dingin, dan memacu adrenalin di jalur air Kali Kuning. Bersama kami, Anda tidak sekadar berwisata, tetapi merasakan hembusan sejarah ketangguhan lereng Merapi secara langsung dan intim.',
-  image1: '/images/img_1_53_jeep_cruising_through_volcanic_off-road_track_mount_merapi.png',
+  image1: '/images/img_1_53_jeep_cruising_through_volcanic_off-road_track_mount_merapi.webp',
   image1Caption: 'Lereng Selatan Gunung Merapi',
-  image2: '/images/img_1_66_travelers_cheering_in_the_open_jeep.png',
+  image2: '/images/img_1_66_travelers_cheering_in_the_open_jeep.webp',
   image2Caption: 'Momen Seru Penumpang',
 };
 
@@ -42,7 +43,7 @@ export default function CollageSection({ onOpenBooking }: CollageSectionProps) {
       {/* Background Watermark */}
       <Parallax speed={0.3} className="absolute inset-0 pointer-events-none opacity-[0.18] overflow-hidden fade-mask-y" innerClassName="absolute inset-x-0 -top-[20%] -bottom-[20%]">
         <Image
-          src="/images/img_1_48_mount_merapi_watermark.png"
+          src="/images/img_1_48_mount_merapi_watermark.webp"
           alt="" aria-hidden="true"
           fill
           className="object-cover object-top mix-blend-multiply"
@@ -59,7 +60,7 @@ export default function CollageSection({ onOpenBooking }: CollageSectionProps) {
               <div className="relative h-[380px] sm:h-[440px] rounded-[32px] overflow-hidden shadow-2xl shadow-slate-900/20 border-4 border-white group">
                 {content.image1 ? (
                   <ParallaxImage
-                    src={content.image1}
+                    src={optimizedSrc(content.image1)}
                     alt={content.image1Caption || 'Gambar utama'}
                     speed={0.12}
                     className="object-cover object-center group-hover:scale-105 transition-transform duration-700"
@@ -89,7 +90,7 @@ export default function CollageSection({ onOpenBooking }: CollageSectionProps) {
                   innerClassName="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl border-4 border-white group"
                 >
                   <Image
-                    src={content.image2}
+                    src={optimizedSrc(content.image2)}
                     alt={content.image2Caption || 'Gambar kedua'}
                     fill
                     className="object-cover object-center group-hover:scale-110 transition-transform duration-700"

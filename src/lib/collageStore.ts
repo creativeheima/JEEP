@@ -15,9 +15,9 @@ const DATA_FILE = path.join(process.cwd(), 'data', 'collage_content.json');
 const DEFAULT_CONTENT: CollageContent = {
   headline: 'Petualangan Dimulai di Sini, Menembus Jejak Vulkanik Legendaris',
   description: 'Menembus aroma belerang tipis, melintasi hamparan pasir hitam muntahan lahar dingin, dan memacu adrenalin di jalur air Kali Kuning. Bersama kami, Anda tidak sekadar berwisata, tetapi merasakan hembusan sejarah ketangguhan lereng Merapi secara langsung dan intim.',
-  image1: '/images/img_1_53_jeep_cruising_through_volcanic_off-road_track_mount_merapi.png',
+  image1: '/images/img_1_53_jeep_cruising_through_volcanic_off-road_track_mount_merapi.webp',
   image1Caption: 'Lereng Selatan Gunung Merapi',
-  image2: '/images/img_1_66_travelers_cheering_in_the_open_jeep.png',
+  image2: '/images/img_1_66_travelers_cheering_in_the_open_jeep.webp',
   image2Caption: 'Momen Seru Penumpang',
 };
 

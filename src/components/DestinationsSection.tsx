@@ -24,7 +24,7 @@ export default function DestinationsSection({ onSelectDestination }: Destination
       title: 'Bunker Kaliadem & Lava Merapi',
       desc: 'Benteng pertahanan bawah tanah saksi bisu awan panas. Berdiri tepat di lereng atas Merapi dengan pemandangan puncak yang menjulang sangat dekat.',
       routeInfo: 'Rute: Short, Medium & Long',
-      image: '/images/img_1_372_bunker_kaliadem.png',
+      image: '/images/img_1_372_bunker_kaliadem.webp',
     },
     {
       id: 'kalikuning',
@@ -35,7 +35,7 @@ export default function DestinationsSection({ onSelectDestination }: Destination
       title: 'Jalur Off-Road Air Kali Kuning',
       desc: 'Puncak keseruan aksi jeep offroad melibas aliran sungai berbatu dengan manuver drift dan cipratan air setinggi kap mobil.',
       routeInfo: 'Rute: Medium & Long',
-      image: '/images/img_1_390_jalur_off-road_air_kali_kuning.png',
+      image: '/images/img_1_390_jalur_off-road_air_kali_kuning.webp',
     },
     {
       id: 'museum',
@@ -46,7 +46,7 @@ export default function DestinationsSection({ onSelectDestination }: Destination
       title: 'Museum Sisa Hartaku',
       desc: 'Rumah warga yang diabadikan dengan barang-barang meleleh akibat awan panas 600°C saat erupsi 2010. Jam dinding berhenti tepat pukul 00.05.',
       routeInfo: 'Rute: Semua Paket',
-      image: '/images/img_1_408_museum_sisa_hartaku.png',
+      image: '/images/img_1_408_museum_sisa_hartaku.webp',
     },
     {
       id: 'batualien',
@@ -57,7 +57,7 @@ export default function DestinationsSection({ onSelectDestination }: Destination
       title: 'Batu Alien (Wajah Merapi)',
       desc: 'Batu vulkanik raksasa terlempar dari kawah Merapi yang membentuk siluet wajah manusia secara alami, menghadap langsung jurang Kali Gendol.',
       routeInfo: 'Rute: Short, Medium & Long',
-      image: '/images/img_1_419_batu_alien_merapi.png',
+      image: '/images/img_1_419_batu_alien_merapi.webp',
     },
   ];
 
@@ -88,7 +88,7 @@ export default function DestinationsSection({ onSelectDestination }: Destination
       {/* Mountain watermark background */}
       <Parallax speed={0.3} className="absolute inset-0 pointer-events-none opacity-[0.18] overflow-hidden fade-mask-y" innerClassName="absolute inset-x-0 -top-[20%] -bottom-[20%]">
         <Image
-          src="/images/img_1_357_mountain_peak_watermark.png"
+          src="/images/img_1_357_mountain_peak_watermark.webp"
           alt="" aria-hidden="true"
           fill
           className="object-cover object-top mix-blend-multiply"

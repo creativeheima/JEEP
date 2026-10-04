@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { ArrowRight, ChevronDown, ChevronLeft, ChevronRight, Star, Users } from 'lucide-react';
 import { useScrollFrame } from '@/components/motion';
 import { HeroSlide } from '@/types/heroSlide';
+import { optimizedSrc } from '@/lib/media';
 
 interface HeroSectionProps {
   onOpenBooking?: () => void;
@@ -13,7 +14,7 @@ interface HeroSectionProps {
 const DEFAULT_SLIDES: HeroSlide[] = [
   {
     id: 'slide-1',
-    imageUrl: '/images/img_1_6_merapi_jeep_adventure_golden_hour_experience.png',
+    imageUrl: '/images/img_1_6_merapi_jeep_adventure_golden_hour_experience.webp',
     title: 'Golden Sunrise Merapi Experience',
     showText: true,
     showButton: true,
@@ -22,7 +23,7 @@ const DEFAULT_SLIDES: HeroSlide[] = [
   },
   {
     id: 'slide-2',
-    imageUrl: '/images/img_1_53_jeep_cruising_through_volcanic_off-road_track_mount_merapi.png',
+    imageUrl: '/images/img_1_53_jeep_cruising_through_volcanic_off-road_track_mount_merapi.webp',
     title: 'Ekspedisi Jalur Vulkanik & Lava Track',
     showText: true,
     showButton: true,
@@ -31,7 +32,7 @@ const DEFAULT_SLIDES: HeroSlide[] = [
   },
   {
     id: 'slide-3',
-    imageUrl: '/images/img_1_193_paket_medium_kali_kuning_splashing_water.png',
+    imageUrl: '/images/img_1_193_paket_medium_kali_kuning_splashing_water.webp',
     title: 'Sensasi Manuver Basah Kali Kuning',
     showText: true,
     showButton: true,
@@ -40,7 +41,7 @@ const DEFAULT_SLIDES: HeroSlide[] = [
   },
   {
     id: 'slide-4',
-    imageUrl: '/images/img_1_372_bunker_kaliadem.png',
+    imageUrl: '/images/img_1_372_bunker_kaliadem.webp',
     title: 'Pesona Bersejarah Bunker Kaliadem',
     showText: true,
     showButton: true,
@@ -49,7 +50,7 @@ const DEFAULT_SLIDES: HeroSlide[] = [
   },
   {
     id: 'slide-5',
-    imageUrl: '/images/img_1_443_travelers_smiling_in_4x4_jeep_with_mount_merapi_in_the_background.png',
+    imageUrl: '/images/img_1_443_travelers_smiling_in_4x4_jeep_with_mount_merapi_in_the_background.webp',
     title: 'Momen Bahagia Wisatawan & Keluarga',
     showText: true,
     showButton: true,
@@ -195,7 +196,7 @@ export default function HeroSection({ onOpenBooking }: HeroSectionProps) {
             >
               <div className={`absolute inset-0 ${isActive ? 'kenburns' : ''}`}>
                 <Image
-                  src={slide.imageUrl}
+                  src={optimizedSrc(slide.imageUrl)}
                   alt={slide.title || 'Foto Petualangan Merapi Jeep'}
                   fill
                   priority={idx === 0}

@@ -1,11 +1,9 @@
 import { ClientAdminSession, UserRole } from '@/types/account';
 
-export const ADMIN_CREDENTIALS = {
-  username: 'admin',
-  email: 'admin@merapijeep.com',
-  password: 'admin123',
-};
-
+/**
+ * Helper sesi di BROWSER — hanya untuk tampilan (nama user, role di UI).
+ * Keamanan sebenarnya ada di cookie httpOnly `mja_session` yang dicek server (lihat lib/session.ts & middleware.ts).
+ */
 export const AUTH_STORAGE_KEY = 'mja_admin_session';
 
 export function getClientSession(): {
@@ -69,16 +67,33 @@ export function setClientSession(user: {
       email: user.email,
       role: normalizedRole,
     },
-    token: 'mja_token_' + Date.now(),
+    token: 'ui',
     loginTime: new Date().toISOString(),
   };
   localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
-  // Also set cookie for simple server inspection
-  document.cookie = `mja_admin_token=${session.token}; path=/; max-age=86400; SameSite=Lax`;
 }
 
 export function clearClientSession() {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(AUTH_STORAGE_KEY);
-  document.cookie = `mja_admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+  // Hapus cookie sesi httpOnly di server
+  fetch('/api/admin/auth', { method: 'DELETE', keepalive: true }).catch(() => {});
+}
+
+/**
+ * Pastikan sesi server masih valid. Bila tidak (cookie habis/dihapus), bersihkan sesi UI.
+ * Mengembalikan data user dari server atau null.
+ */
+export async function verifyServerSession(): Promise<{ id: string; username: string; name?: string; role: UserRole } | null> {
+  try {
+    const res = await fetch('/api/admin/auth', { cache: 'no-store' });
+    if (!res.ok) {
+      if (typeof window !== 'undefined') localStorage.removeItem(AUTH_STORAGE_KEY);
+      return null;
+    }
+    const json = await res.json();
+    return json.user || null;
+  } catch {
+    return null;
+  }
 }

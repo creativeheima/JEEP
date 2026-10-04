@@ -40,6 +40,9 @@ export default function AdminLoginPage() {
 
       if (data.success && data.user) {
         setClientSession(data.user);
+        if (data.weakPassword) {
+          alert('Peringatan keamanan: password Anda masih bawaan/lemah. Segera ganti melalui menu Manajemen Akun (Superuser).');
+        }
         if (data.user.role === 'SUPERUSER') {
           router.push('/superuser');
         } else {
@@ -55,10 +58,6 @@ export default function AdminLoginPage() {
     }
   };
 
-  const handleDemoFill = () => {
-    setUsername('admin');
-    setPassword('admin123');
-  };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col justify-center items-center p-4 relative font-sans antialiased">
@@ -121,9 +120,6 @@ export default function AdminLoginPage() {
                 <label className="font-space font-bold text-slate-700 uppercase tracking-wide">
                   Kata Sandi
                 </label>
-                <span className="text-[11px] text-slate-400 font-work">
-                  Default: admin123
-                </span>
               </div>
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
@@ -147,14 +143,6 @@ export default function AdminLoginPage() {
 
             {/* Auto-fill admin button */}
             <div className="pt-1 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={handleDemoFill}
-                className="inline-flex items-center gap-1.5 text-[11px] font-space font-bold text-amber-700 hover:text-amber-800 transition-colors cursor-pointer"
-              >
-                <KeyRound className="w-3.5 h-3.5 text-amber-600" />
-                <span>Auto-fill Akun Admin</span>
-              </button>
               <div className="flex items-center gap-1 text-[11px] text-slate-400">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Sesi Terenkripsi</span>

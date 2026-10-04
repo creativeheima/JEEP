@@ -6,7 +6,7 @@ import { Reveal, ParallaxImage } from '@/components/motion';
 import SectionHeading, { Accent } from '@/components/SectionHeading';
 
 const STORY = {
-  image: '/images/img_1_443_travelers_smiling_in_4x4_jeep_with_mount_merapi_in_the_background.png',
+  image: '/images/img_1_443_travelers_smiling_in_4x4_jeep_with_mount_merapi_in_the_background.webp',
   tag: 'Sunrise Expedition',
   caption: 'Trio Sahabat Jakarta • Rute Kaliadem',
   quote:

@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { Instagram, Facebook, Youtube, ArrowUpRight, ArrowUp } from 'lucide-react';
 
 const NAV = [
@@ -20,6 +21,7 @@ const SOCIALS = [
 ];
 
 export default function Footer() {
+  const contact = useSiteSettings();
   const year = new Date().getFullYear();
 
   return (
@@ -31,7 +33,7 @@ export default function Footer() {
           <div className="max-w-xs">
             <Link href="#hero" className="inline-block">
               <Image
-                src="/images/logo.png"
+                src="/images/logo.webp"
                 alt="Merapi Jeep Adventure — lava tour jeep Merapi Jogja"
                 width={2171}
                 height={724}
@@ -59,12 +61,12 @@ export default function Footer() {
           {/* Kontak */}
           <div className="space-y-2 lg:text-right">
             <a
-              href="https://wa.me/6281234567890"
+              href={`https://wa.me/${contact.whatsapp}`}
               target="_blank"
               rel="noopener noreferrer"
               className="group inline-flex items-center gap-1.5 font-outfit font-bold text-xl sm:text-2xl text-white hover:text-amber-400 transition-colors"
             >
-              +62 812-3456-7890
+              {contact.phone}
               <ArrowUpRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </a>
             <a

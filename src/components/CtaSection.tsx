@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { MessageSquare, PhoneCall, CheckCircle, ShieldCheck, Zap } from 'lucide-react';
 import { Reveal, ParallaxImage } from '@/components/motion';
 
@@ -9,6 +10,7 @@ interface CtaSectionProps {
 }
 
 export default function CtaSection({ onOpenBooking }: CtaSectionProps) {
+  const contact = useSiteSettings();
   return (
     <section id="kontak" className="flow-section pt-10 pb-0 lg:pt-16">
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -16,7 +18,7 @@ export default function CtaSection({ onOpenBooking }: CtaSectionProps) {
           {/* Kartu imersif gelap — jembatan visual menuju footer */}
           <div className="relative overflow-hidden rounded-[36px] sm:rounded-[48px] bg-slate-950 shadow-2xl shadow-slate-950/30 isolate">
             <ParallaxImage
-              src="/images/img_1_670_mount_merapi_sunrise_jeep_watermark.png"
+              src="/images/img_1_670_mount_merapi_sunrise_jeep_watermark.webp"
               alt="Jeep Merapi saat sunrise di Kaliurang"
               speed={0.18}
               sizes="(max-width: 1280px) 100vw, 1280px"
@@ -56,7 +58,7 @@ export default function CtaSection({ onOpenBooking }: CtaSectionProps) {
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-12">
                 <button
-                  onClick={() => onOpenBooking ? onOpenBooking() : window.open('https://wa.me/6281234567890?text=Halo%20Merapi%20Jeep%20Adventure,%20saya%20ingin%20booking%20Jeep', '_blank')}
+                  onClick={() => onOpenBooking ? onOpenBooking() : window.open(`https://wa.me/${contact.whatsapp}?text=Halo%20Merapi%20Jeep%20Adventure,%20saya%20ingin%20booking%20Jeep`, '_blank')}
                   className="amber-gradient-btn card-shine overflow-hidden hover:-translate-y-0.5 w-full sm:w-auto px-8 py-4 rounded-full font-space font-bold text-xs sm:text-sm text-slate-950 shadow-xl shadow-amber-500/30 flex items-center justify-center gap-2.5 active:scale-95 cursor-pointer"
                 >
                   <MessageSquare className="w-4 h-4 text-slate-950" />
@@ -64,7 +66,7 @@ export default function CtaSection({ onOpenBooking }: CtaSectionProps) {
                 </button>
 
                 <a
-                  href="https://wa.me/6281234567890?text=Halo,%20saya%20ingin%20konsultasi%20rute%20jeep%20merapi"
+                  href={`https://wa.me/${contact.whatsapp}?text=Halo,%20saya%20ingin%20konsultasi%20rute%20jeep%20merapi`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full sm:w-auto px-8 py-4 rounded-full font-space font-bold text-xs sm:text-sm text-white bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md transition-colors flex items-center justify-center gap-2"

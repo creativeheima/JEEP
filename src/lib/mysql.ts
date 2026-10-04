@@ -3,6 +3,15 @@ import { MySqlConfig, DbConnectionTestResult } from '@/types/database';
 import { getDbConfig } from './dbConfig';
 
 let pool: Pool | null = null;
+
+/**
+ * SSL MySQL: sertifikat server DIVERIFIKASI (aman dari penyadapan).
+ * Hanya bila provider memakai sertifikat self-signed, set MYSQL_SSL_ALLOW_SELF_SIGNED=true.
+ */
+function sslOption(enabled: boolean) {
+  if (!enabled) return undefined;
+  return { rejectUnauthorized: process.env.MYSQL_SSL_ALLOW_SELF_SIGNED !== 'true' };
+}
 let currentConfigString = '';
 
 export function getMySqlPool(configOverride?: MySqlConfig): Pool | null {
@@ -23,7 +32,7 @@ export function getMySqlPool(configOverride?: MySqlConfig): Pool | null {
       user: cfg.user,
       password: cfg.password,
       database: cfg.database,
-      ssl: cfg.ssl ? { rejectUnauthorized: false } : undefined,
+      ssl: sslOption(cfg.ssl),
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0,
@@ -46,7 +55,7 @@ export async function testMySqlConnection(config: MySqlConfig): Promise<DbConnec
       user: config.user,
       password: config.password,
       database: config.database,
-      ssl: config.ssl ? { rejectUnauthorized: false } : undefined,
+      ssl: sslOption(config.ssl),
       connectTimeout: 5000,
     });
 
@@ -96,7 +105,7 @@ export async function initMySqlSchema(config: MySqlConfig): Promise<{ success: b
       user: config.user,
       password: config.password,
       database: config.database,
-      ssl: config.ssl ? { rejectUnauthorized: false } : undefined,
+      ssl: sslOption(config.ssl),
       connectTimeout: 7000,
     });
 
@@ -172,6 +181,28 @@ export async function initMySqlSchema(config: MySqlConfig): Promise<{ success: b
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
       },
       {
+        name: 'admin_accounts',
+        sql: `CREATE TABLE IF NOT EXISTS admin_accounts (
+          id VARCHAR(100) PRIMARY KEY,
+          username VARCHAR(64) UNIQUE NOT NULL,
+          name VARCHAR(150) NOT NULL DEFAULT '',
+          email VARCHAR(255) UNIQUE NOT NULL,
+          role VARCHAR(20) NOT NULL DEFAULT 'ADMIN',
+          password_hash VARCHAR(255),
+          is_active BOOLEAN NOT NULL DEFAULT TRUE,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          last_login DATETIME NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+      },
+      {
+        name: 'site_settings',
+        sql: `CREATE TABLE IF NOT EXISTS site_settings (
+  \`key\` VARCHAR(50) PRIMARY KEY,
+  value JSON NOT NULL,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+      },
+      {
         name: 'collage_content',
         sql: `CREATE TABLE IF NOT EXISTS collage_content (
           id VARCHAR(50) PRIMARY KEY,
@@ -194,7 +225,7 @@ export async function initMySqlSchema(config: MySqlConfig): Promise<{ success: b
 
     return {
       success: true,
-      message: `Semua 5 tabel MySQL berhasil diinisialisasi: bookings, gallery_items, hero_slides, tour_packages, collage_content.`,
+      message: `Semua tabel MySQL berhasil diinisialisasi: ${tablesToCreate.map((t) => t.name).join(', ')}.`,
       tablesCreated: tablesToCreate.map((t) => t.name),
     };
   } catch (err: any) {

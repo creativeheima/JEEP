@@ -7,6 +7,7 @@ import { TourPackage } from '@/types/package';
 import { defaultPackagesData } from '@/lib/defaultPackages';
 import { Reveal, Parallax } from '@/components/motion';
 import SectionHeading, { Accent } from '@/components/SectionHeading';
+import { optimizedSrc } from '@/lib/media';
 
 interface PackagesSectionProps {
   onSelectPackage?: (pkgName: string, price: string) => void;
@@ -33,7 +34,7 @@ export default function PackagesSection({ onSelectPackage }: PackagesSectionProp
   return (
     <section id="paket-wisata" className="flow-section py-14 sm:py-20 lg:py-24 overflow-hidden">
       <Parallax speed={0.3} className="absolute inset-0 pointer-events-none opacity-[0.18] overflow-hidden fade-mask-y" innerClassName="absolute inset-x-0 -top-[20%] -bottom-[20%]">
-        <Image src="/images/img_1_134_offroad_trail_watermark.png" alt="" aria-hidden="true" fill className="object-cover object-center mix-blend-multiply" />
+        <Image src="/images/img_1_134_offroad_trail_watermark.webp" alt="" aria-hidden="true" fill className="object-cover object-center mix-blend-multiply" />
       </Parallax>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -72,7 +73,7 @@ export default function PackagesSection({ onSelectPackage }: PackagesSectionProp
               >
                 {/* Foto */}
                 <div className="relative h-32 w-full bg-slate-100">
-                  {pkg.image && <Image src={pkg.image} alt={`${pkg.title} jeep lava tour Merapi`} fill sizes="300px" className="object-cover" />}
+                  {pkg.image && <Image src={optimizedSrc(pkg.image)} alt={`${pkg.title} jeep lava tour Merapi`} fill sizes="300px" className="object-cover" />}
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent" />
                   <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between">
                     {pkg.isFeatured ? (
@@ -169,7 +170,7 @@ export default function PackagesSection({ onSelectPackage }: PackagesSectionProp
               <div>
                 <div className="relative h-48 sm:h-52 w-full overflow-hidden bg-slate-100">
                   {pkg.image ? (
-                    <Image src={pkg.image} alt={`${pkg.title} jeep lava tour Merapi`} fill className="object-cover object-center group-hover:scale-110 transition-transform duration-[1200ms] ease-out" />
+                    <Image src={optimizedSrc(pkg.image)} alt={`${pkg.title} jeep lava tour Merapi`} fill className="object-cover object-center group-hover:scale-110 transition-transform duration-[1200ms] ease-out" />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-slate-400 text-xs font-space">FOTO PAKET</div>
                   )}

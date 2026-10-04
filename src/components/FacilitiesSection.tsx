@@ -64,7 +64,7 @@ export default function FacilitiesSection() {
       {/* Background Watermark */}
       <Parallax speed={0.3} className="absolute inset-0 pointer-events-none opacity-[0.18] overflow-hidden fade-mask-y" innerClassName="absolute inset-x-0 -top-[20%] -bottom-[20%]">
         <Image
-          src="/images/img_1_490_landscape_background.png"
+          src="/images/img_1_490_landscape_background.webp"
           alt="" aria-hidden="true"
           fill
           className="object-cover object-center mix-blend-multiply"
@@ -87,7 +87,7 @@ export default function FacilitiesSection() {
           <Reveal variant="zoom" className="sm:col-span-2 lg:row-span-2">
             <div className="card-shine relative h-full min-h-[200px] sm:min-h-[320px] rounded-[28px] sm:rounded-[32px] overflow-hidden shadow-xl shadow-slate-900/10 group">
               <ParallaxImage
-                src="/images/img_1_53_jeep_cruising_through_volcanic_off-road_track_mount_merapi.png"
+                src="/images/img_1_53_jeep_cruising_through_volcanic_off-road_track_mount_merapi.webp"
                 alt="Armada jeep 4x4 lava tour Merapi melintasi jalur vulkanik"
                 speed={0.1}
                 sizes="(max-width: 1024px) 100vw, 640px"

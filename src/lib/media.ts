@@ -83,3 +83,13 @@ export function videoSourceType(url?: string): 'drive' | 'instagram' | 'youtube'
   if (isDirectVideoUrl(url)) return 'file';
   return null;
 }
+
+/**
+ * Foto bawaan website sudah dikonversi ke WebP (jauh lebih ringan).
+ * Data lama di database yang masih menunjuk ke .png otomatis dialihkan ke versi .webp.
+ */
+export function optimizedSrc(src?: string | null): string {
+  if (!src) return '';
+  if (/^\/images\/(img_1_[^/]+|logo)\.png$/i.test(src)) return src.replace(/\.png$/i, '.webp');
+  return src;
+}

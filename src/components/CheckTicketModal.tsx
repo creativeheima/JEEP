@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { X, Search, Ticket, ArrowRight, AlertCircle } from 'lucide-react';
 
 interface CheckTicketModalProps {
@@ -10,6 +11,7 @@ interface CheckTicketModalProps {
 }
 
 export default function CheckTicketModal({ isOpen, onClose }: CheckTicketModalProps) {
+  const contact = useSiteSettings();
   const router = useRouter();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -62,7 +64,7 @@ export default function CheckTicketModal({ isOpen, onClose }: CheckTicketModalPr
             Cek E-Tiket & Invoice
           </h3>
           <p className="font-work text-xs text-slate-500 mt-1">
-            Masukkan Kode Booking (contoh: <span className="font-mono font-bold text-slate-700">MJA-2026-001</span>) untuk membuka tiket Anda.
+            Masukkan Kode Booking (contoh: <span className="font-mono font-bold text-slate-700">MJA-2026-K7Q2XP</span>) untuk membuka tiket Anda.
           </p>
         </div>
 
@@ -100,7 +102,7 @@ export default function CheckTicketModal({ isOpen, onClose }: CheckTicketModalPr
 
         <div className="mt-6 pt-4 border-t border-slate-100 text-center">
           <p className="font-work text-[11px] text-slate-400">
-            Belum menerima kode tiket setelah deal di WhatsApp? Hubungi CS kami di WhatsApp 0812-3456-7890.
+            Belum menerima kode tiket setelah deal di WhatsApp? Hubungi CS kami di WhatsApp {contact.phoneLocal}.
           </p>
         </div>
 

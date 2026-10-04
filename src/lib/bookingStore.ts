@@ -201,48 +201,39 @@ export function getBookingByCode(code: string): Booking | undefined {
 // -------------------------------------------------------------
 // ASYNC MULTI-DATABASE OPERATIONS (Supabase, MySQL, Local)
 // -------------------------------------------------------------
+/**
+ * Bila database (MySQL/Supabase) aktif, hasilnya SELALU dari database — termasuk saat kosong.
+ * Data file lokal hanya dipakai di mode "local" atau saat database belum dikonfigurasi,
+ * supaya admin tidak melihat booking contoh/lama yang seolah-olah asli.
+ */
 export async function fetchAllBookings(): Promise<Booking[]> {
   const mode = getDbConfig().activeMode;
 
-  // 1. MySQL Mode
   if (mode === 'mysql') {
     const pool = getMySqlPool();
     if (pool) {
-      try {
-        const [rows]: [any[], any] = await pool.query(
-          'SELECT * FROM bookings ORDER BY created_at DESC'
-        );
-        if (Array.isArray(rows) && rows.length > 0) {
-          return rows.map(fromDatabaseRow);
-        }
-      } catch (err: any) {
-        console.error('MySQL fetchAllBookings error, fallback to local:', err.message);
-      }
+      const [rows]: [any[], any] = await pool.query('SELECT * FROM bookings ORDER BY created_at DESC');
+      return Array.isArray(rows) ? rows.map(fromDatabaseRow) : [];
     }
   }
 
-  // 2. Supabase Mode
   if (mode === 'supabase' && isSupabaseConfigured() && supabase) {
-    try {
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (!error && data && data.length > 0) {
-        return data.map(fromDatabaseRow);
-      }
-    } catch (err) {
-      console.error('Supabase exception, fallback to local:', err);
-    }
+    const { data, error } = await supabase.from('bookings').select('*').order('created_at', { ascending: false });
+    if (error) throw new Error(`Gagal membaca booking dari Supabase: ${error.message}`);
+    return (data || []).map(fromDatabaseRow);
   }
 
-  // 3. Fallback / Local
   return getBookings();
 }
 
+/** Hanya izinkan karakter kode/ID yang wajar (mencegah injeksi filter query). */
+function cleanId(v: string) {
+  return v.trim().replace(/[^A-Za-z0-9_-]/g, '').slice(0, 80);
+}
+
 export async function fetchSingleBooking(idOrCode: string): Promise<Booking | null> {
-  const search = idOrCode.trim();
+  const search = cleanId(idOrCode);
+  if (!search) return null;
   const mode = getDbConfig().activeMode;
 
   // 1. MySQL Mode
@@ -280,8 +271,11 @@ export async function fetchSingleBooking(idOrCode: string): Promise<Booking | nu
     }
   }
 
-  const local = getBookingByCode(search);
-  return local || null;
+  // File lokal hanya bila tidak memakai database
+  if (mode === 'local' || (mode === 'supabase' && !isSupabaseConfigured()) || (mode === 'mysql' && !getMySqlPool())) {
+    return getBookingByCode(search) || null;
+  }
+  return null;
 }
 
 export async function insertNewBooking(booking: Booking): Promise<Booking> {
@@ -332,12 +326,15 @@ export async function insertNewBooking(booking: Booking): Promise<Booking> {
         return booking;
       } catch (err: any) {
         console.error('MySQL insertNewBooking error:', err.message);
+        // Jangan diam-diam simpan ke file: admin tidak akan melihatnya di database
+        throw new Error(`Database MySQL menolak data: ${err.message}`);
       }
     }
   }
 
   // 2. Supabase Mode
   if (mode === 'supabase' && isSupabaseConfigured() && supabase) {
+    let lastError = '';
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const row = toDatabaseRow(booking);
@@ -352,6 +349,7 @@ export async function insertNewBooking(booking: Booking): Promise<Booking> {
         }
 
         const supabaseError = error?.message || 'Unknown Supabase error';
+        lastError = supabaseError;
         const isDuplicate = error?.code === '23505' || /duplicate key/i.test(supabaseError);
         if (isDuplicate) {
           booking = { ...booking, bookingCode: generateBookingCode(), id: `bkg-${Date.now()}-${attempt + 1}` };
@@ -360,25 +358,27 @@ export async function insertNewBooking(booking: Booking): Promise<Booking> {
         console.error('[bookingStore] Supabase insert error:', supabaseError);
         break;
       } catch (err) {
+        lastError = (err as Error).message;
         console.error('[bookingStore] Supabase insert exception:', err);
         break;
       }
     }
+    throw new Error(`Database menolak data: ${lastError || 'tidak diketahui'}`);
   }
 
-  // 3. Fallback: simpan ke file lokal
+  // 3. Mode lokal: simpan ke file (development / VPS)
   const bookings = getBookings();
   bookings.unshift(booking);
   if (tryWriteLocal(bookings)) return booking;
-
-  return booking;
+  throw new Error('Penyimpanan belum dikonfigurasi. Hubungkan database (Supabase/MySQL) di halaman Superuser atau isi environment hosting.');
 }
 
 export async function updateExistingBooking(
   idOrCode: string,
   updates: Partial<Booking>
 ): Promise<Booking | null> {
-  const search = idOrCode.trim();
+  const search = cleanId(idOrCode);
+  if (!search) return null;
   const mode = getDbConfig().activeMode;
 
   // 1. MySQL Mode
@@ -484,7 +484,8 @@ export async function updateExistingBooking(
 }
 
 export async function deleteExistingBooking(idOrCode: string): Promise<boolean> {
-  const search = idOrCode.trim();
+  const search = cleanId(idOrCode);
+  if (!search) return false;
   const mode = getDbConfig().activeMode;
 
   // 1. MySQL Mode
@@ -521,9 +522,11 @@ export async function deleteExistingBooking(idOrCode: string): Promise<boolean> 
   return true;
 }
 
+/** Kode booking acak 6 karakter (tanpa huruf/angka yang mirip) → sulit ditebak orang lain. */
 export function generateBookingCode(): string {
-  const randomNum = Math.floor(1000 + Math.random() * 9000);
-  const now = new Date();
-  const year = now.getFullYear();
-  return `MJA-${year}-${randomNum}`;
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const bytes = new Uint8Array(6);
+  crypto.getRandomValues(bytes);
+  const rand = Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('');
+  return `MJA-${new Date().getFullYear()}-${rand}`;
 }

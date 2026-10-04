@@ -1,81 +1,96 @@
 import { NextResponse } from 'next/server';
 import { authenticateUser } from '@/lib/accountStore';
-import { ADMIN_CREDENTIALS } from '@/lib/adminAuth';
+import { createSessionToken, getSessionFromRequest, SESSION_COOKIE, sessionCookieOptions } from '@/lib/session';
 
+// Batas percobaan login sederhana per IP (in-memory, best-effort)
+const attempts = new Map<string, { count: number; until: number }>();
+const MAX_ATTEMPTS = 8;
+const WINDOW_MS = 15 * 60 * 1000;
+
+function clientIp(request: Request) {
+  return (request.headers.get('x-forwarded-for') || '').split(',')[0].trim() || request.headers.get('x-real-ip') || 'local';
+}
+
+/** POST: login */
 export async function POST(request: Request) {
+  const ip = clientIp(request);
+  const now = Date.now();
+  const rec = attempts.get(ip);
+  if (rec && rec.until > now && rec.count >= MAX_ATTEMPTS) {
+    return NextResponse.json(
+      { success: false, error: 'Terlalu banyak percobaan login. Coba lagi dalam 15 menit.' },
+      { status: 429 }
+    );
+  }
+
   try {
     const { username, password } = await request.json();
-
     if (!username || !password) {
+      return NextResponse.json({ success: false, error: 'Username dan kata sandi wajib diisi!' }, { status: 400 });
+    }
+
+    let result;
+    try {
+      result = await authenticateUser(String(username), String(password));
+    } catch (err) {
+      console.error('Login storage error:', err);
       return NextResponse.json(
-        { success: false, error: 'Username dan kata sandi wajib diisi!' },
-        { status: 400 }
+        { success: false, error: 'Penyimpanan akun belum siap: ' + (err as Error).message },
+        { status: 500 }
       );
     }
 
-    // Coba otentikasi melalui account store
-    let user = authenticateUser(username, password);
-
-    // Fallback kompatibilitas kredensial bawaan admin
-    if (!user) {
-      const isValidFallback =
-        (username === ADMIN_CREDENTIALS.username || username === ADMIN_CREDENTIALS.email) &&
-        password === ADMIN_CREDENTIALS.password;
-
-      if (isValidFallback) {
-        user = {
-          id: 'usr-default-admin',
-          username: ADMIN_CREDENTIALS.username,
-          name: 'Admin Basecamp',
-          email: ADMIN_CREDENTIALS.email,
-          role: 'ADMIN',
-          isActive: true,
-          createdAt: new Date().toISOString(),
-        };
-      }
+    if (!result) {
+      const r = attempts.get(ip);
+      attempts.set(ip, { count: (r && r.until > now ? r.count : 0) + 1, until: now + WINDOW_MS });
+      return NextResponse.json({ success: false, error: 'Username atau kata sandi tidak cocok!' }, { status: 401 });
     }
 
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'Username atau kata sandi tidak cocok!' },
-        { status: 401 }
-      );
+    const { account, weakPassword } = result;
+    if (!account.isActive) {
+      return NextResponse.json({ success: false, error: 'Akun Anda dinonaktifkan oleh Superuser!' }, { status: 403 });
     }
+    attempts.delete(ip);
 
-    if (!user.isActive) {
-      return NextResponse.json(
-        { success: false, error: 'Akun Anda dinonaktifkan oleh Superuser!' },
-        { status: 403 }
-      );
-    }
+    const token = await createSessionToken({
+      uid: account.id,
+      username: account.username,
+      name: account.name,
+      role: account.role,
+    });
 
-    const token = 'mja_auth_' + Date.now();
     const response = NextResponse.json({
       success: true,
-      user: {
-        id: user.id,
-        username: user.username,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
-      token,
+      user: { id: account.id, username: account.username, name: account.name, email: account.email, role: account.role },
+      weakPassword,
     });
-
-    response.cookies.set('mja_admin_token', token, {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24, // 1 day
-      path: '/',
-    });
-
+    // Cookie "secure" hanya bila diakses lewat HTTPS (agar tes via http://IP-lokal di HP tetap bisa login)
+    const isHttps =
+      new URL(request.url).protocol === 'https:' || request.headers.get('x-forwarded-proto') === 'https';
+    response.cookies.set(SESSION_COOKIE, token, { ...sessionCookieOptions, secure: isHttps });
+    // Hapus cookie lama yang tidak aman (versi sebelumnya)
+    response.cookies.set('mja_admin_token', '', { path: '/', maxAge: 0 });
     return response;
   } catch (error) {
     console.error('Login error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Terjadi kesalahan internal sistem' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Terjadi kesalahan internal sistem' }, { status: 500 });
   }
+}
+
+/** GET: cek sesi aktif (dipakai halaman admin untuk memastikan masih login) */
+export async function GET(request: Request) {
+  const session = await getSessionFromRequest(request);
+  if (!session) return NextResponse.json({ success: false }, { status: 401 });
+  return NextResponse.json({
+    success: true,
+    user: { id: session.uid, username: session.username, name: session.name, role: session.role },
+  });
+}
+
+/** DELETE: logout */
+export async function DELETE() {
+  const response = NextResponse.json({ success: true });
+  response.cookies.set(SESSION_COOKIE, '', { ...sessionCookieOptions, maxAge: 0 });
+  response.cookies.set('mja_admin_token', '', { path: '/', maxAge: 0 });
+  return response;
 }

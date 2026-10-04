@@ -4,6 +4,14 @@ import {
   updateExistingBooking, 
   deleteExistingBooking 
 } from '@/lib/bookingStore';
+import { getSessionFromRequest } from '@/lib/session';
+import { requireSession } from '@/lib/apiAuth';
+
+/** Sensor nomor HP untuk tampilan publik: 0812****678 */
+function maskPhone(p: string) {
+  const d = String(p || '');
+  return d.length <= 7 ? d.replace(/.(?=.{2})/g, '*') : `${d.slice(0, 4)}${'*'.repeat(Math.max(3, d.length - 7))}${d.slice(-3)}`;
+}
 
 export async function GET(
   request: Request,
@@ -17,6 +25,14 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'Booking tidak ditemukan' }, { status: 404 });
     }
 
+    // Publik (cek tiket / invoice) hanya melihat data yang perlu; admin melihat lengkap
+    const isAdmin = !!(await getSessionFromRequest(request));
+    if (!isAdmin) {
+      return NextResponse.json({
+        success: true,
+        data: { ...booking, customerPhone: maskPhone(booking.customerPhone), notes: '' },
+      });
+    }
     return NextResponse.json({ success: true, data: booking });
   } catch (error) {
     console.error('Error fetching booking:', error);
@@ -28,6 +44,8 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireSession(request);
+  if (auth instanceof NextResponse) return auth;
   try {
     const { id } = await params;
     const updates = await request.json();
@@ -70,6 +88,8 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireSession(request);
+  if (auth instanceof NextResponse) return auth;
   try {
     const { id } = await params;
     const success = await deleteExistingBooking(id);

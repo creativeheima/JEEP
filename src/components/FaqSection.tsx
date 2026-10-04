@@ -4,10 +4,12 @@ import React, { useState } from 'react';
 import { Plus, MessageCircle } from 'lucide-react';
 import { Reveal } from '@/components/motion';
 import SectionHeading, { Accent } from '@/components/SectionHeading';
-import { FAQS, SITE } from '@/lib/site';
+import { FAQS } from '@/lib/site';
+import { useSiteSettings } from '@/hooks/useSiteSettings';
 
 /** Pertanyaan yang paling sering dicari wisatawan — juga dipakai untuk structured data FAQ. */
 export default function FaqSection() {
+  const contact = useSiteSettings();
   const [open, setOpen] = useState<number | null>(0);
 
   return (
@@ -23,7 +25,7 @@ export default function FaqSection() {
           />
           <Reveal variant="up" delay={200} className="hidden lg:block">
             <a
-              href={`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent('Halo, saya ingin bertanya tentang paket jeep Merapi')}`}
+              href={`https://wa.me/${contact.whatsapp}?text=${encodeURIComponent('Halo, saya ingin bertanya tentang paket jeep Merapi')}`}
               target="_blank"
               rel="noopener noreferrer"
               className="glass-card inline-flex items-center gap-3 pl-2 pr-5 py-2 rounded-full hover:-translate-y-0.5 transition-transform"

@@ -22,11 +22,34 @@ import {
 import { defaultPackagesData } from './PackagesSection';
 import { TourPackage } from '@/types/package';
 import { Booking } from '@/types/booking';
+import { lockScroll } from '@/lib/scrollLock';
+import { useSiteSettings } from '@/hooks/useSiteSettings';
 
 interface BookingModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialPackage?: string;
+}
+
+/** Pesan WhatsApp ke admin berisi detail booking yang baru tersimpan. */
+function buildWaUrl(b: Booking, waNumber: string): string {
+  const origin = typeof window !== 'undefined' ? window.location.origin : SITE.url;
+  const lines = [
+    'Halo Admin Merapi Jeep Adventure,',
+    '',
+    'Saya sudah mengisi formulir reservasi di website:',
+    `• *Kode Booking:* ${b.bookingCode}`,
+    `• *Nama:* ${b.customerName}`,
+    `• *No HP:* ${b.customerPhone}`,
+    `• *Paket:* ${b.packageName}`,
+    `• *Tanggal Tur:* ${b.tourDate} (${b.tourTime})`,
+    `• *Peserta:* ${b.paxCount} orang (${b.jeepCount} jeep)`,
+    b.notes ? `• *Catatan:* ${b.notes}` : '',
+    `• *E-Tiket:* ${origin}/invoice/${b.bookingCode}`,
+    '',
+    'Saya ingin konfirmasi harga & pembayaran DP agar tiket di-approve. Terima kasih!',
+  ].filter((l, idx, arr) => l !== '' || (idx > 0 && arr[idx - 1] !== ''));
+  return `https://api.whatsapp.com/send?phone=${waNumber}&text=${encodeURIComponent(lines.join('\n'))}`;
 }
 
 export default function BookingModal({
@@ -56,18 +79,21 @@ export default function BookingModal({
   const [submitting, setSubmitting] = useState(false);
   const [submittedBooking, setSubmittedBooking] = useState<Booking | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const contact = useSiteSettings();
+  const [website, setWebsite] = useState(''); // honeypot anti-bot (tidak terlihat oleh manusia)
 
-  // Prevent background scroll when modal is open
+  // Kunci scroll latar selama form terbuka
+  useEffect(() => (isOpen ? lockScroll() : undefined), [isOpen]);
+
+  // Tutup dengan tombol Esc
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
     };
-  }, [isOpen]);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -84,6 +110,19 @@ export default function BookingModal({
     }
 
     setSubmitting(true);
+    // Buka tab WhatsApp SEKARANG (masih dalam klik user) supaya tidak diblokir popup blocker,
+    // lalu diarahkan ke chat admin setelah booking tersimpan.
+    let waWindow: Window | null = null;
+    try {
+      waWindow = window.open('', '_blank');
+      if (waWindow) {
+        waWindow.document.title = 'Membuka WhatsApp…';
+        waWindow.document.body.innerHTML =
+          '<p style="font-family:sans-serif;text-align:center;margin-top:40vh;color:#444">Menyimpan reservasi &amp; membuka WhatsApp…</p>';
+      }
+    } catch {
+      waWindow = null;
+    }
     try {
       const res = await fetch('/api/bookings', {
         method: 'POST',
@@ -99,6 +138,7 @@ export default function BookingModal({
           notes: notes,
           isClientSubmission: true,
           approvalStatus: 'PENDING',
+          website,
         }),
       });
 
@@ -113,6 +153,14 @@ export default function BookingModal({
 
       if (res.ok && json.success && json.data) {
         setSubmittedBooking(json.data);
+        const waUrl = buildWaUrl(json.data, contact.whatsapp);
+        if (waWindow && !waWindow.closed) {
+          waWindow.location.href = waUrl;
+        } else {
+          // Popup diblokir → arahkan langsung (data sudah aman tersimpan)
+          window.location.href = waUrl;
+        }
+        waWindow = null;
       } else {
         console.error('Booking gagal:', res.status, json.error || raw.slice(0, 200));
         setSubmitError(json.error || `Server error (${res.status})`);
@@ -121,6 +169,8 @@ export default function BookingModal({
       console.error(err);
       setSubmitError('Koneksi terputus. Periksa internet Anda lalu coba lagi.');
     } finally {
+      // Gagal / batal → tutup tab kosong yang sudah dibuka
+      if (waWindow && !waWindow.closed) waWindow.close();
       setSubmitting(false);
     }
   };
@@ -136,23 +186,12 @@ export default function BookingModal({
       `Jumlah: ${jeepCount} jeep / ${passengers} orang`,
       notes ? `Catatan: ${notes}` : '',
     ].filter(Boolean);
-    window.open(`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(lines.join('\n'))}`, '_blank');
+    window.open(`https://api.whatsapp.com/send?phone=${contact.whatsapp}&text=${encodeURIComponent(lines.join('\n'))}`, '_blank');
   };
 
   const handleOpenWaChat = () => {
     if (!submittedBooking) return;
-    const message = `Halo Admin Merapi Jeep Adventure,%0A%0A` +
-      `Saya sudah mengisi formulir reservasi di website:%0A` +
-      `📌 *Kode Booking:* ${submittedBooking.bookingCode}%0A` +
-      `👤 *Nama:* ${encodeURIComponent(submittedBooking.customerName)}%0A` +
-      `📱 *No HP:* ${encodeURIComponent(submittedBooking.customerPhone)}%0A` +
-      `🚙 *Paket:* ${encodeURIComponent(submittedBooking.packageName)}%0A` +
-      `📅 *Tanggal Tur:* ${submittedBooking.tourDate} (${submittedBooking.tourTime})%0A` +
-      `👥 *Peserta:* ${submittedBooking.paxCount} Orang (${submittedBooking.jeepCount} Jeep)%0A` +
-      (submittedBooking.notes ? `📝 *Catatan:* ${encodeURIComponent(submittedBooking.notes)}%0A` : '') +
-      `%0ASaya ingin konfirmasi kesepakatan harga & pembayaran DP untuk di-approve tiketnya. Terima kasih! 🌋`;
-
-    window.open(`https://wa.me/${SITE.whatsapp}?text=${message}`, '_blank');
+    window.open(buildWaUrl(submittedBooking, contact.whatsapp), '_blank');
   };
 
   return (
@@ -211,7 +250,7 @@ export default function BookingModal({
                   Pemesanan Berhasil Diajukan!
                 </h3>
                 <p className="font-work text-xs text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
-                  Kode reservasi Anda telah terbit. Langkah berikutnya adalah konfirmasi harga final &amp; DP ke Admin via WhatsApp.
+                  Data sudah masuk ke sistem dan WhatsApp Admin sudah dibuka. Tekan <strong>Kirim</strong> di WhatsApp untuk konfirmasi harga &amp; DP. Belum terbuka? Klik tombol di bawah.
                 </p>
               </div>
 
@@ -238,7 +277,7 @@ export default function BookingModal({
                   className="amber-gradient-btn w-full h-12 rounded-xl font-space font-black text-xs text-slate-950 shadow-lg shadow-amber-500/25 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99] transition-all"
                 >
                   <MessageSquare className="w-4 h-4 shrink-0" />
-                  <span>HUBUNGI ADMIN WA UNTUK DEAL &amp; DP</span>
+                  <span>BUKA WHATSAPP ADMIN</span>
                 </button>
 
                 <Link
@@ -254,6 +293,13 @@ export default function BookingModal({
           ) : (
             /* Booking Form */
             <form id="booking-form" onSubmit={handleSubmit} className="space-y-3.5">
+              {/* Honeypot: disembunyikan dari pengunjung, hanya bot yang mengisi */}
+              <div aria-hidden="true" style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, overflow: 'hidden' }}>
+                <label>
+                  Website
+                  <input type="text" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} />
+                </label>
+              </div>
               {/* Choose Package */}
               <div>
                 <label className="font-space font-bold text-slate-700 block mb-1.5 uppercase tracking-wide text-[11px]">
@@ -489,7 +535,7 @@ export default function BookingModal({
               disabled={submitting}
               className="amber-gradient-btn w-full h-12 rounded-xl font-space font-black text-xs text-slate-950 shadow-lg shadow-amber-500/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-[0.99] transition-all"
             >
-              <span>{submitting ? 'MENGIRIM RESERVASI...' : 'KIRIM DATA RESERVASI KE BASECAMP'}</span>
+              <span>{submitting ? 'MENGIRIM RESERVASI...' : 'KIRIM RESERVASI & BUKA WHATSAPP'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
             <p className="text-center font-work text-[10.5px] text-slate-400 mt-1.5 leading-tight">

@@ -8,7 +8,8 @@ import { GalleryItem } from '@/types/gallery';
 import { Reveal } from '@/components/motion';
 import SectionHeading, { Accent } from '@/components/SectionHeading';
 import GalleryFeed from '@/components/GalleryFeed';
-import { parseDriveId, driveThumbnailUrl, isInstagramUrl, isDirectVideoUrl } from '@/lib/media';
+import { parseDriveId, driveThumbnailUrl, isInstagramUrl, isDirectVideoUrl, optimizedSrc } from '@/lib/media';
+import { lockScroll } from '@/lib/scrollLock';
 
 const PREVIEW_MOBILE = 5;
 const PREVIEW_DESKTOP = 6;
@@ -53,7 +54,7 @@ function GalleryTile({
     >
       {showImage ? (
         <Image
-          src={displayImage as string}
+          src={optimizedSrc(displayImage)}
           alt={item.title}
           fill
           sizes={compact ? '(max-width: 1024px) 50vw, 25vw' : '(max-width: 1024px) 100vw, 33vw'}
@@ -137,21 +138,19 @@ export default function GallerySection() {
     setFeed({ items: list, index });
   };
 
-  // Kunci scroll halaman & tutup dengan tombol Esc saat galeri lengkap terbuka
+  // Kunci scroll halaman selama galeri lengkap terbuka
+  useEffect(() => (fullOpen ? lockScroll() : undefined), [fullOpen]);
+
+  // Tutup galeri lengkap dengan tombol Esc
   useEffect(() => {
     if (!fullOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
       if (feed) return;
       setFullOpen(false);
     };
     window.addEventListener('keydown', onKey);
-    return () => {
-      document.body.style.overflow = prev;
-      window.removeEventListener('keydown', onKey);
-    };
+    return () => window.removeEventListener('keydown', onKey);
   }, [fullOpen, feed]);
 
   const tabs = [
@@ -269,7 +268,7 @@ export default function GallerySection() {
                   {items.slice(0, 3).map((it) => (
                     <span key={it.id} className="relative w-9 h-9 rounded-full overflow-hidden ring-2 ring-white bg-slate-200">
                       {(it.thumbnailUrl || (it.type === 'PHOTO' ? it.mediaUrl : '')) && (
-                        <Image src={(it.thumbnailUrl || it.mediaUrl) as string} alt="" fill sizes="36px" className="object-cover" />
+                        <Image src={optimizedSrc(it.thumbnailUrl || it.mediaUrl)} alt="" fill sizes="36px" className="object-cover" />
                       )}
                     </span>
                   ))}

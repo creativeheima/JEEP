@@ -62,7 +62,7 @@ export default function Navbar({ onOpenBooking, onOpenCheckTicket }: NavbarProps
         <Link href="#hero" className="flex items-center group shrink-0 py-0.5">
           <div className="relative h-10 sm:h-12 w-auto transition-transform duration-300 group-hover:scale-105">
             <Image
-              src="/images/logo.png"
+              src="/images/logo.webp"
               alt="Merapi Jeep Adventure — lava tour jeep Merapi Jogja"
               width={2171}
               height={724}

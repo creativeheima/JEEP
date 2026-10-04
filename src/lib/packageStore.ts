@@ -12,7 +12,7 @@ const DEFAULT_PACKAGES: TourPackage[] = [
     title: 'Paket Short',
     price: 'Rp 400.000',
     duration: '1.5 - 2 Jam',
-    image: '/images/img_1_156_paket_short_merapi_jeep.png',
+    image: '/images/img_1_156_paket_short_merapi_jeep.webp',
     destinations: [
       'Museum Sisa Hartaku (Erupsi 2010)',
       'Batu Alien (Batu Wajah Merapi)',
@@ -30,7 +30,7 @@ const DEFAULT_PACKAGES: TourPackage[] = [
     title: 'Paket Medium',
     price: 'Rp 500.000',
     duration: '2 - 2.5 Jam',
-    image: '/images/img_1_193_paket_medium_kali_kuning_splashing_water.png',
+    image: '/images/img_1_193_paket_medium_kali_kuning_splashing_water.webp',
     destinations: [
       'Atraksi Basah Air Kali Kuning (Water Splash)',
       'Museum Sisa Hartaku',
@@ -50,7 +50,7 @@ const DEFAULT_PACKAGES: TourPackage[] = [
     title: 'Paket Long',
     price: 'Rp 600.000',
     duration: '3 - 3.5 Jam',
-    image: '/images/img_1_243_paket_long_petilasan_mbah_maridjan.png',
+    image: '/images/img_1_243_paket_long_petilasan_mbah_maridjan.webp',
     destinations: [
       'Petilasan Mbah Maridjan (Kinahrejo)',
       'Manuver Off-Road Air Kali Kuning',
@@ -69,7 +69,7 @@ const DEFAULT_PACKAGES: TourPackage[] = [
     title: 'Paket Sunrise',
     price: 'Rp 550.000',
     duration: '2.5 - 3 Jam',
-    image: '/images/img_1_280_paket_sunrise_merapi.png',
+    image: '/images/img_1_280_paket_sunrise_merapi.webp',
     destinations: [
       'Golden Sunrise Kaliadem View Point',
       'Sensasi Udara Dingin Fajar Gunung Merapi',

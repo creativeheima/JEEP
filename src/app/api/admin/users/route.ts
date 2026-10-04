@@ -5,11 +5,14 @@ import {
   updateAccount,
   deleteAccount,
 } from '@/lib/accountStore';
+import { requireSession } from '@/lib/apiAuth';
 
 // GET: Ambil daftar seluruh akun admin
-export async function GET() {
+export async function GET(request: Request) {
+  const auth = await requireSession(request, 'SUPERUSER');
+  if (auth instanceof NextResponse) return auth;
   try {
-    const accounts = getSafeAccounts();
+    const accounts = await getSafeAccounts();
     return NextResponse.json({ success: true, data: accounts });
   } catch (error) {
     console.error('Error fetching accounts:', error);
@@ -22,6 +25,8 @@ export async function GET() {
 
 // POST: Tambah akun baru
 export async function POST(request: Request) {
+  const auth = await requireSession(request, 'SUPERUSER');
+  if (auth instanceof NextResponse) return auth;
   try {
     const body = await request.json();
     const { username, name, email, role, password } = body;
@@ -33,7 +38,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = createAccount({
+    const result = await createAccount({
       username,
       name: name || username,
       email,
@@ -61,6 +66,8 @@ export async function POST(request: Request) {
 
 // PUT: Perbarui data akun (nama, email, role, password, status aktif)
 export async function PUT(request: Request) {
+  const auth = await requireSession(request, 'SUPERUSER');
+  if (auth instanceof NextResponse) return auth;
   try {
     const body = await request.json();
     const { id, name, email, username, role, password, isActive } = body;
@@ -72,11 +79,11 @@ export async function PUT(request: Request) {
       );
     }
 
-    const result = updateAccount(id, {
+    const result = await updateAccount(id, {
       ...(name !== undefined && { name }),
       ...(email !== undefined && { email }),
       ...(username !== undefined && { username }),
-      ...(role !== undefined && { role }),
+      ...(role !== undefined && { role: role === 'SUPERUSER' ? 'SUPERUSER' : 'ADMIN' }),
       ...(password !== undefined && { password }),
       ...(isActive !== undefined && { isActive }),
     });
@@ -101,6 +108,8 @@ export async function PUT(request: Request) {
 
 // DELETE: Hapus akun
 export async function DELETE(request: Request) {
+  const auth = await requireSession(request, 'SUPERUSER');
+  if (auth instanceof NextResponse) return auth;
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
@@ -112,7 +121,10 @@ export async function DELETE(request: Request) {
       );
     }
 
-    const result = deleteAccount(id);
+    if (id === auth.uid) {
+      return NextResponse.json({ success: false, error: 'Tidak bisa menghapus akun yang sedang dipakai login.' }, { status: 400 });
+    }
+    const result = await deleteAccount(id);
     if (!result.success) {
       return NextResponse.json({ success: false, error: result.error }, { status: 400 });
     }

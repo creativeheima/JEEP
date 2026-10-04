@@ -181,3 +181,59 @@ using (bucket_id = 'media');
 -- create policy "Anon upload media"
 -- on storage.objects for insert
 -- with check (bucket_id = 'media');
+
+-- =================================================================
+-- 9. AKUN ADMIN (public.admin_accounts)
+--    Password disimpan sebagai HASH (scrypt), bukan teks asli.
+--    Tidak ada policy publik → hanya bisa diakses server dengan SERVICE ROLE KEY.
+-- =================================================================
+create table if not exists public.admin_accounts (
+  id text primary key,
+  username text unique not null,
+  name text not null default '',
+  email text unique not null,
+  role text not null default 'ADMIN',          -- 'SUPERUSER' | 'ADMIN'
+  password_hash text,
+  is_active boolean not null default true,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  last_login timestamp with time zone
+);
+alter table public.admin_accounts enable row level security;
+revoke all on table public.admin_accounts from anon, authenticated;
+grant all on table public.admin_accounts to service_role;
+
+-- =================================================================
+-- 10. PENGETATAN KEAMANAN (WAJIB DIJALANKAN)
+--     Sebelumnya siapa pun yang memegang anon key bisa membaca/mengubah/menghapus
+--     data booking langsung lewat API Supabase (melewati website).
+--     Sekarang semua penulisan & data booking hanya lewat server (SERVICE ROLE KEY).
+--     → Pastikan SUPABASE_SERVICE_ROLE_KEY sudah diisi di environment server.
+-- =================================================================
+-- Booking: data pribadi pelanggan → tidak ada akses publik sama sekali
+drop policy if exists "Allow public insert" on public.bookings;
+drop policy if exists "Allow public select" on public.bookings;
+drop policy if exists "Allow public update" on public.bookings;
+drop policy if exists "Allow public delete" on public.bookings;
+revoke all on table public.bookings from anon, authenticated;
+
+-- Galeri & slide: boleh DIBACA publik, tapi tidak boleh diubah dari luar server
+drop policy if exists "Allow public insert gallery" on public.gallery_items;
+drop policy if exists "Allow public delete gallery" on public.gallery_items;
+drop policy if exists "Allow public insert hero_slides" on public.hero_slides;
+drop policy if exists "Allow public update hero_slides" on public.hero_slides;
+drop policy if exists "Allow public delete hero_slides" on public.hero_slides;
+revoke insert, update, delete on table public.gallery_items from anon, authenticated;
+revoke insert, update, delete on table public.hero_slides from anon, authenticated;
+
+
+-- =================================================================
+-- 11. SITE SETTINGS (nomor WhatsApp admin, diatur dari Dashboard Admin)
+--     Dibaca & ditulis oleh server memakai SUPABASE_SERVICE_ROLE_KEY.
+-- =================================================================
+create table if not exists public.site_settings (
+  key text primary key,
+  value jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+alter table public.site_settings enable row level security;
+revoke all on table public.site_settings from anon, authenticated;

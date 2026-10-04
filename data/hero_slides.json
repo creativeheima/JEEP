@@ -1,7 +1,7 @@
 [
   {
     "id": "slide-1",
-    "imageUrl": "/images/img_1_6_merapi_jeep_adventure_golden_hour_experience.png",
+    "imageUrl": "/images/img_1_6_merapi_jeep_adventure_golden_hour_experience.webp",
     "title": "Golden Sunrise Merapi Experience",
     "showText": true,
     "showButton": true,
@@ -32,7 +32,7 @@
   },
   {
     "id": "slide-4",
-    "imageUrl": "/images/img_1_372_bunker_kaliadem.png",
+    "imageUrl": "/images/img_1_372_bunker_kaliadem.webp",
     "title": "Pesona Bersejarah Bunker Kaliadem",
     "showText": true,
     "showButton": true,

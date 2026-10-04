@@ -67,6 +67,22 @@ const DEFAULT_CONFIG: SystemDatabaseConfig = {
 };
 
 let cachedConfig: SystemDatabaseConfig | null = null;
+let lastSavePersisted = true;
+
+/** true bila penyimpanan terakhir benar-benar tertulis permanen (bukan hanya di memori / /tmp). */
+export function wasLastSavePersisted() {
+  return lastSavePersisted;
+}
+
+export const isServerlessHosting = () => IS_VERCEL;
+
+const MASK_RE = /\.\.\.|•/;
+/** Nilai rahasia dari UI yang masih tersensor → pakai nilai tersimpan. */
+export function unmaskSecret(incoming: unknown, stored: string): string {
+  if (typeof incoming !== 'string') return stored;
+  if (MASK_RE.test(incoming)) return stored;
+  return incoming;
+}
 
 export function resetDbConfigCache() {
   cachedConfig = null;
@@ -185,8 +201,11 @@ export function saveDbConfig(
       const filePath = getConfigFilePath();
       ensureDirExists(filePath);
       fs.writeFileSync(filePath, JSON.stringify(merged, null, 2), 'utf-8');
+      // Di serverless, /tmp hilang saat instance berganti → tidak dianggap permanen
+      lastSavePersisted = !IS_VERCEL;
       console.log(`[dbConfig] Config disimpan ke ${filePath} (mode: ${merged.activeMode})`);
     } catch (fsErr: any) {
+      lastSavePersisted = false;
       console.warn('[dbConfig] File write gagal (config tetap aktif via memory cache):', fsErr?.message);
     }
 

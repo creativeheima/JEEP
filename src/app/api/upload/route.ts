@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import { requireSession } from '@/lib/apiAuth';
 import {
   supabase,
   isSupabaseConfigured,
@@ -51,10 +52,6 @@ async function createBucketIfPossible() {
   return !error || /already exists/i.test(error.message);
 }
 
-function isAdmin(request: Request) {
-  const cookie = request.headers.get('cookie') || '';
-  return /(?:^|;\s*)mja_admin_token=mja_[^;]+/.test(cookie);
-}
 
 function buildPath(folder: string, fileName: string) {
   const safeFolder = ALLOWED_FOLDERS.includes(folder) ? folder : 'misc';
@@ -69,9 +66,8 @@ function buildPath(folder: string, fileName: string) {
 }
 
 export async function POST(request: Request) {
-  if (!isAdmin(request)) {
-    return NextResponse.json({ success: false, error: 'Sesi admin berakhir. Silakan login ulang.' }, { status: 401 });
-  }
+  const auth = await requireSession(request);
+  if (auth instanceof NextResponse) return auth;
 
   const url = new URL(request.url);
 

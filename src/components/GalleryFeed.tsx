@@ -12,8 +12,8 @@ import {
   instagramEmbedUrl,
   youTubeEmbedUrl,
   isDirectVideoUrl,
-  isInstagramUrl,
-} from '@/lib/media';
+  isInstagramUrl, optimizedSrc } from '@/lib/media';
+import { lockScroll } from '@/lib/scrollLock';
 
 interface GalleryFeedProps {
   items: GalleryItem[];
@@ -114,20 +114,18 @@ export default function GalleryFeed({ items, startIndex, onClose }: GalleryFeedP
     [items.length]
   );
 
-  // Kunci scroll halaman + keyboard
+  // Kunci scroll halaman selama penampil terbuka
+  useEffect(() => lockScroll(), []);
+
+  // Keyboard
   useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
       else if (e.key === 'ArrowDown' || e.key === 'j') { e.preventDefault(); goTo(active + 1); }
       else if (e.key === 'ArrowUp' || e.key === 'k') { e.preventDefault(); goTo(active - 1); }
     };
     window.addEventListener('keydown', onKey);
-    return () => {
-      document.body.style.overflow = prev;
-      window.removeEventListener('keydown', onKey);
-    };
+    return () => window.removeEventListener('keydown', onKey);
   }, [active, goTo, onClose]);
 
   const flash = (msg: string) => {
@@ -190,7 +188,7 @@ export default function GalleryFeed({ items, startIndex, onClose }: GalleryFeedP
             >
               {/* Latar blur dari foto yang sama */}
               {img && near && (
-                <Image src={img} alt="" fill sizes="50vw" className="object-cover scale-125 blur-2xl opacity-80 saturate-150" aria-hidden="true" />
+                <Image src={optimizedSrc(img)} alt="" fill sizes="50vw" className="object-cover scale-125 blur-2xl opacity-80 saturate-150" aria-hidden="true" />
               )}
               <div className="absolute inset-0 bg-black/25" />
 
@@ -213,7 +211,7 @@ export default function GalleryFeed({ items, startIndex, onClose }: GalleryFeedP
                   />
                 ) : img && near ? (
                   <div className={`relative w-full h-full sm:max-w-[min(100%,560px)] ${isActive ? 'feed-zoom' : ''}`}>
-                    <Image src={img} alt={item.title} fill sizes="(max-width: 640px) 100vw, 560px" priority={isActive} className="object-contain" />
+                    <Image src={optimizedSrc(img)} alt={item.title} fill sizes="(max-width: 640px) 100vw, 560px" priority={isActive} className="object-contain" />
                   </div>
                 ) : videoFile && near ? (
                   <video src={`${videoFile}#t=0.5`} muted playsInline preload="metadata" className="w-full h-full max-h-[85dvh] sm:max-w-[560px] object-contain" />

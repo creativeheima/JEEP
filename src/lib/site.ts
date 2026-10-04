@@ -1,7 +1,11 @@
+import { normalizeWaNumber, formatPhoneIntl, formatPhoneLocal } from './phone';
 /**
  * Data bisnis terpusat untuk SEO (metadata, JSON-LD, sitemap, FAQ).
  * ⚠️ GANTI nilai bertanda TODO dengan data asli sebelum website online.
  */
+/** Nomor default (cadangan). Nomor utama diatur admin di Dashboard → Konten Website → Kontak & WhatsApp. */
+const WA_NUMBER = normalizeWaNumber(process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '') || '6281234567890';
+
 export const SITE = {
   // TODO: ganti dengan domain final (atau isi NEXT_PUBLIC_SITE_URL di .env)
   url: (process.env.NEXT_PUBLIC_SITE_URL || 'https://merapijeepadventure.com').replace(/\/$/, ''),
@@ -25,9 +29,10 @@ export const SITE = {
     'kali kuning jeep',
     'wisata jogja',
   ],
-  // TODO: ganti nomor WhatsApp asli (format internasional tanpa +)
-  whatsapp: '6281234567890',
-  phone: '+62-812-3456-7890',
+  // Nomor WhatsApp default — nomor aktif diambil dari pengaturan admin (lihat useSiteSettings)
+  whatsapp: WA_NUMBER,
+  phone: formatPhoneIntl(WA_NUMBER).replace(' ', '-'),
+  phoneLocal: formatPhoneLocal(WA_NUMBER),
   email: 'booking@merapijeepadventure.com',
   address: {
     street: 'Basecamp Kaliurang Barat, Hargobinangun',

@@ -21,7 +21,7 @@ import {
   Sliders,
   Car
 } from 'lucide-react';
-import { isClientAuthenticated, getClientUser, clearClientSession, isSuperuser } from '@/lib/adminAuth';
+import { isClientAuthenticated, getClientUser, clearClientSession, isSuperuser, verifyServerSession } from '@/lib/adminAuth';
 import DatabaseSettingsTab from '@/components/admin/DatabaseSettingsTab';
 import UserManagementTab from '@/components/admin/UserManagementTab';
 
@@ -46,7 +46,16 @@ export default function SuperuserDashboardPage() {
     }
 
     setCurrentUser(user);
-    setAuthorized(true);
+    // Role ditentukan server, bukan localStorage
+    verifyServerSession().then((u) => {
+      if (!u) {
+        router.push('/superuser/login');
+      } else if (u.role !== 'SUPERUSER') {
+        router.push('/admin');
+      } else {
+        setAuthorized(true);
+      }
+    });
   }, [router]);
 
   const handleLogout = () => {
