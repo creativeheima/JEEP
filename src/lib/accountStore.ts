@@ -142,7 +142,24 @@ export async function listAccounts(): Promise<AdminAccount[]> {
   const mode = storageMode();
   if (mode === 'supabase') {
     const { data, error } = await supabase!.from(TABLE).select('*').order('created_at', { ascending: true });
-    if (error) throw new Error(`Tabel ${TABLE} belum siap di Supabase: ${error.message}`);
+    if (error) {
+      // Tabel belum dibuat → fallback ke lokal, jangan crash
+      const isTableMissing =
+        error.code === '42P01' ||
+        error.message.includes('does not exist') ||
+        error.message.includes('schema cache') ||
+        error.code === 'PGRST116' ||
+        error.message.includes('relation');
+      if (isTableMissing) {
+        console.warn(
+          '[accountStore] Tabel admin_accounts belum ada di Supabase.\n' +
+          'Jalankan script di: Supabase Dashboard → SQL Editor → salin dari supabase/schema.sql (bagian 9).\n' +
+          'Sementara ini menggunakan penyimpanan lokal (data/accounts.json).'
+        );
+        return readLocal();
+      }
+      throw new Error(`Gagal memuat akun dari Supabase: ${error.message}`);
+    }
     if (data && data.length) return data.map(fromRow);
     const init = initialAccounts();
     if (init.length) await supabase!.from(TABLE).insert(init.map(toRow));
@@ -163,7 +180,11 @@ async function insertRow(a: AdminAccount): Promise<void> {
   const mode = storageMode();
   if (mode === 'supabase') {
     const { error } = await supabase!.from(TABLE).insert([toRow(a)]);
-    if (error) throw new Error(error.message);
+    if (error) {
+      const isTableMissing = error.code === '42P01' || error.message.includes('does not exist') || error.message.includes('schema cache') || error.message.includes('relation');
+      if (isTableMissing) { const list = readLocal(); list.push(a); writeLocal(list); return; }
+      throw new Error(error.message);
+    }
     return;
   }
   if (mode === 'mysql') {
@@ -183,7 +204,11 @@ async function updateRow(a: AdminAccount): Promise<void> {
   const mode = storageMode();
   if (mode === 'supabase') {
     const { error } = await supabase!.from(TABLE).update(toRow(a)).eq('id', a.id);
-    if (error) throw new Error(error.message);
+    if (error) {
+      const isTableMissing = error.code === '42P01' || error.message.includes('does not exist') || error.message.includes('schema cache') || error.message.includes('relation');
+      if (isTableMissing) { const list = readLocal().map((x) => (x.id === a.id ? a : x)); writeLocal(list); return; }
+      throw new Error(error.message);
+    }
     return;
   }
   if (mode === 'mysql') {
