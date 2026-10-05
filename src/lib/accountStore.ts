@@ -272,7 +272,8 @@ export async function createAccount(data: {
   role: UserRole;
   password: string;
 }): Promise<{ success: boolean; error?: string; account?: SafeAccount }> {
-  const pwErr = validateNewPassword(data.password);
+  const cleanPw = data.password.trim();
+  const pwErr = validateNewPassword(cleanPw);
   if (pwErr) return { success: false, error: pwErr };
   if (!/^[a-zA-Z0-9._-]{3,32}$/.test(data.username.trim())) {
     return { success: false, error: 'Username 3–32 karakter: huruf, angka, titik, strip, atau garis bawah.' };
@@ -290,7 +291,7 @@ export async function createAccount(data: {
     name: data.name.trim() || data.username.trim(),
     email: data.email.trim(),
     role: data.role === 'SUPERUSER' ? 'SUPERUSER' : 'ADMIN',
-    passwordHash: hashPassword(data.password),
+    passwordHash: hashPassword(cleanPw),
     isActive: true,
     createdAt: new Date().toISOString(),
   };
